@@ -18,7 +18,7 @@
 #------------------------------------------------------------------------
 
 # purple robot data dir (downloaded postgres dbs extracted into csv format)
-data.dir <- "/home/afolarinbrc/workspace/Datasets/purple_robot_data/purple_dbs/csv";
+data.dir <- "/home/afolarinbrc/workspace/Datasets/purple_robot_data/purple_dbs/csv/";
 
 accel <- read.csv(paste(data.dir, "af_AccelerometerProbe.csv", sep=""), stringsAsFactors=F, header=T);
 fitbit <- read.csv(paste(data.dir, "af_FitBitApiFeature.csv", sep=""), stringsAsFactors=F, header=T);
@@ -203,6 +203,56 @@ lapply(loc.ts, plot_loc_slice);
 
 
 
+
+
+## get parallel time dataset for fitbit and location (here 09-24/04/2014)
+start.ts <- rownames(location[c("id","event_Date")][location$event_Date %in% "2014-04-09", ][1,]);
+end <- location[c("id","event_Date")][location$event_Date %in% "2014-04-24", ];
+end.ts <- rownames(end[nrow(end), ])
+loc.j <- location[start.ts:end.ts, ];  #grab overlapping days with fitbit data
+fit.j <- fitbit;
+
+#joined set (for further work on integrating the probe data, join on timestamp)
+loc.fit.merge <- merge(loc.j, fit.j, by.x="timestamp", by.y="timestamp", all=T)
+
+
+plot_joint_slice <- function(x)
+{
+    # split the joined lists back into their constituents
+    l <- x$loc.ts;
+    f <- x$fit.ts;
+
+    x11(width=18, height=9);
+    
+    # latitude only 24hr slice 
+    loc.ll <- l["LATITUDE"]; #grab single col dataframe
+    #loc.ll <- scale(loc.ll);
+    loc.ll[loc.ll > 51.5] <- NA;  ### blank points above my home latitude... ** need better way to scale!!!! TODO
+    loc.ll[loc.ll < 51.45] <- NA;  ### blank points below my home latitude... ** need better way to scale!!!! TODO
+    loc.nc<- ncol(loc.ll);
+    #matplot(location$timestamp, loc.ll, log="y", pch=1:loc.nc, col=1:loc.nc);
+    matplot(l$timestamp, loc.ll, pch=1:loc.nc, col=1:loc.nc, lty=2, main="Latitude and Lightly Active Minutes", sub="24hr Slice", xlab="event timestamp", ylab="latitude and lightly active mins");
+    legend("topleft", legend=colnames(loc.ll), inset=.05, pch =1:loc.nc, col =1:loc.nc, cex=0.7);
+    abline(v=l$midnight_Hour);
+
+    # a 24hrs slice
+    fit.m.d <- f["LIGHTLY_ACTIVE_MINUTES"];
+    fit.nc<- ncol(fit.m.d);
+    matpoints(f$timestamp, fit.m.d, pch=1:fit.nc, col=1:fit.nc);
+    legend("topright", legend=colnames(fit.m.d), inset=.05, pch =1:fit.nc, col =1:fit.nc, cex=0.7);
+    abline(v=f$midnight_Hour);
+
+    savePlot(paste("joint-24hr-slice_", l$event_Date[1], "_.jpg", sep=""));
+
+}
+
+#split by day, 
+loc.ts <- split(loc.j, loc.j$"event_Date");
+fit.ts <- split(fit.j, fit.j$"event_Date");
+#cbind the 2 lists
+slices <- cbind(loc.ts, fit.ts);
+
+lapply(slices, plot_joint_slice);
 
 
 
