@@ -19,17 +19,30 @@
 
 # purple robot data dir (downloaded postgres dbs extracted into csv format)
 data.dir <- "/home/afolarinbrc/workspace/Datasets/purple_robot_data/purple_dbs/csv/";
+setwd(data.dir);
 
 accel <- read.csv(paste(data.dir, "af_AccelerometerProbe.csv", sep=""), stringsAsFactors=F, header=T);
 fitbit <- read.csv(paste(data.dir, "af_FitBitApiFeature.csv", sep=""), stringsAsFactors=F, header=T);
 location <- read.csv(paste(data.dir, "af_LocationProbe.csv", sep=""), stringsAsFactors=F, header=T);
 screen <- read.csv(paste(data.dir, "af_ScreenProbe.csv", sep=""), stringsAsFactors=F, header=T);
-temp <- read.csv(paste(data.dir, "af_TemperatureProbe.csv, sep="")", stringsAsFactors=F, header=T);
+temp <- read.csv(paste(data.dir, "af_TemperatureProbe.csv", sep=""), stringsAsFactors=F, header=T);
 deviceuse <- read.csv(paste(data.dir, "af_DeviceInUseFeature.csv", sep=""), stringsAsFactors=F, header=T);
 light <- read.csv(paste(data.dir, "af_LightProbe.csv", sep=""), stringsAsFactors=F, header=T);
 prhealth <- read.csv(paste(data.dir, "af_RobotHealthProbe.csv", sep=""), stringsAsFactors=F, header=T);
 sun.rs <- read.csv(paste(data.dir, "af_SunriseSunsetFeature.csv", sep=""), stringsAsFactors=F, header=T);
 weather.ug <- read.csv(paste(data.dir, "af_WeatherUndergroundFeature.csv", sep=""), stringsAsFactors=F, header=T);
+
+#order rows by increasing timestamp 
+accel <- accel[order(accel$"timestamp"), ];
+fitbit <- fitbit[order(fitbit$"timestamp"), ];
+location <- location[order(location$"timestamp"), ];
+screen <- screen[order(screen$"timestamp"), ];
+temp<- temp[order(temp$"timestamp"), ];
+deviceuse<- deviceuse[order(deviceuse$"timestamp"), ];
+light<- light[order(light$"timestamp"), ];
+prhealth<- prhealth[order(prhealth$"timestamp"), ];
+sun.rs<- sun.rs[order(sun.rs$"timestamp"), ];
+weather.ug<- weather.ug[order(weather.ug$"timestamp"), ];
 
 
 #--------------------  fitbit data -------------------------------------------
@@ -65,6 +78,16 @@ matplot(fitbit$timestamp, fit.m2, pch=1:fit.nc, col=1:fit.nc,  main="Fitbit Data
 legend(locator(1), colnames(fit.m2), pch =1:fit.nc, col =1:fit.nc, cex=0.7);
 abline(v=fitbit$midnight_Hour);
 savePlot("fitbit-linearsc.jpg");
+
+# scale the plot of all fitbit data 
+x11(width=18,height=9);
+fit.m2 <- fit.m;
+fit.nc<- ncol(fit.m2);
+fit.m2 <- scale(fit.m2)
+matplot(fitbit$timestamp, fit.m2, pch=1:fit.nc, col=1:fit.nc,  main="Fitbit Data", sub="without SLEEP_MEASUREMENTS_DT_DURATION and linear x-axis", xlab="event timestamp", ylab="various fitbit metrics");
+legend(locator(1), colnames(fit.m2), pch =1:fit.nc, col =1:fit.nc, cex=0.7);
+abline(v=fitbit$midnight_Hour);
+savePlot("fitbit_s-linearsc.jpg");
 
 # look closer at just 24hrs data (#11 2014-04-10 00:04:15 -> #291 2014-04-10 23:55:41)
 x11(width=18,height=9);
@@ -125,19 +148,21 @@ cor(loc.m, use="pairwise.complete.obs");
 #on log scale (though dropping points...?)
 x11(width=18,height=9);
 loc.nc<- ncol(loc.m);
+loc.m <- scale(loc.m);
 matplot(location$timestamp, loc.m, log="y", pch=1:loc.nc, col=1:loc.nc);
 legend(locator(1), colnames(loc.m), pch =1:loc.nc, col =1:loc.nc, cex=0.7);
 abline(v=location$midnight_Hour);
-savePlot("location-lg-all.jpg");
+savePlot("location_s-lg-all.jpg");
 
 # longitude and latitude only
 loc.ll <- loc.m[, c("LONGITUDE", "LATITUDE")];
 x11(width=18,height=9);
 loc.nc<- ncol(loc.ll);
+loc.ll <- scale(loc.ll);
 matplot(location$timestamp, loc.ll, log="y", pch=1:loc.nc, col=1:loc.nc,  main="Purple Robot Location Probe", xlab="event timestamp", ylab="various location probe metrics");
 legend(locator(1), colnames(loc.ll), pch =1:loc.nc, col =1:loc.nc, cex=0.7);
 abline(v=location$midnight_Hour);
-savePlot("location-lg-geo.jpg");
+savePlot("location_s-lg-geo.jpg");
 
 # latitude only
 loc.ll <- loc.m[, c("LATITUDE")];
@@ -300,6 +325,31 @@ plot_joint_slice_smooth <- function(x)
 }
 
 lapply(loc.fit.slices, plot_joint_slice_smooth);
+
+
+###------------------------------Basic preprocessing for classification 
+
+# 1) Align the epochs - DONE above loc.fit.slices
+# 2) Impute the missing data - see library(zoo)
+# 3) Run classification 
+require("zoo");
+# try with one 24hr slice
+d <- loc.fit.slices[[10]][, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "SLEEP_MEASUREMENTS_DT_DURATION")];
+dz <- zoo(d);
+index(dz) <- dz[, 1];
+di <- na.approx(dz);
+
+#quick look
+x11(width=18, height=9);
+matplot(di[, 1], scale(di)[, -1]);
+
+# model
+#fit <- lm(SLEEP_MEASUREMENTS_DT_DURATION ~ LATITUDE + LIGHTLY_ACTIVE_MINUTES, di)
+fit <- lm(SLEEP_MEASUREMENTS_DT_DURATION ~ 0 + LATITUDE + LIGHTLY_ACTIVE_MINUTES, di);
+summary(fit);
+
+# really might be better to have logistic regression for SLEEP_MEASUREMENTS_DT_DURATION == 0 => sleep & SLEEP_MEASUREMENTS_DT_DURATION == 23760000 => awake
+# as this is really a boolean and not continuous in this context.
 
 
 
