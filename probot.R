@@ -339,10 +339,11 @@ lapply(loc.fit.slices, plot_joint_slice_smooth);
 ########################################################################################################################
 ###------------------------------Basic preprocessing for classification 
 ########################################################################################################################
-
 # 1) Align the epochs - DONE above loc.fit.slices
 # 2) Impute the missing data - see library(zoo)
-# 3) Run classification 
+# 3) Smooth data runmed(na.exclude(fit.m.d), 5);   #TODO runmed(na.exclude(fit.m.d), 5);
+# 4) Run classification 
+
 require("zoo");
 # try with one 24hr slice
 d <- loc.fit.slices[[10]][, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "SLEEP_MEASUREMENTS_DT_DURATION")];
@@ -362,7 +363,7 @@ summary(fit);
 # really might be better to have logistic regression for SLEEP_MEASUREMENTS_DT_DURATION == 0 => sleep & SLEEP_MEASUREMENTS_DT_DURATION == 23760000 => awake
 # as this is really a boolean and not continuous in this context.
 
-
+#---- plot each 24hr slide of the joined interpol smooth data
 plot_joint_slice_interpol <- function(x)
 {
     d <- x[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "SLEEP_MEASUREMENTS_DT_DURATION")];
@@ -387,7 +388,45 @@ plot_joint_slice_interpol <- function(x)
 
 
 #lapply(loc.fit.slices[[-1]], plot_joint_slice_interpol);
+# run over loc.fit.slices droping the first and last dataframes, which have partial days data
 lapply(loc.fit.slices[c(-1, -length(loc.fit.slices))], plot_joint_slice_interpol);
+
+
+#----- Plot above but in one single window
+#	
+#	x11(width=18, height=9);
+#	par_old <- par(no.readonly=T);
+#	par(mfrow=c(14,2));
+#	
+#	#run on the second dataframe
+#	x <- loc.fit.slices[[2]]
+#	d <- x[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "SLEEP_MEASUREMENTS_DT_DURATION")];
+#	dz <- zoo(d);
+#	index(dz) <- dz[, 1];
+#	di <- na.approx(dz);
+#	n.cols <- colnames(d)[2:4];
+#	n.leg <- length(n.cols)
+#	
+#	matplot(di[, 1], scale(di)[, -1], pch=1:n.leg, col=1:n.leg, lty=2, yaxt="n", main="Latitude and Activity", sub=paste("24hr Slice, Day: ", (x$event_Date[1])), xlab="event timestamp", ylab="latitude and lightly active mins (rescaled)");
+#	
+#	
+#	points_joint_slice_interpol_2 <- function(x)
+#	{
+#	    d <- x[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "SLEEP_MEASUREMENTS_DT_DURATION")];
+#	    dz <- zoo(d);
+#	    index(dz) <- dz[, 1];
+#	    di <- na.approx(dz);
+#	
+#	    #add other points
+#	    matpoints(di[, 1], scale(di)[, -1], pch=1:n.leg, col=1:n.leg, lty=2, yaxt="n", main="Latitude and Activity", sub=paste("24hr Slice, Day: ", (x$event_Date[1])), xlab="event timestamp", ylab="latitude and lightly active mins (rescaled)");
+#	
+#	}
+#	
+#	
+#	#lapply(loc.fit.slices[[-1]], plot_joint_slice_interpol);
+#	# run over loc.fit.slices droping the first, second and last dataframes, which have partial days data
+#	lapply(loc.fit.slices[c(-1:2, -length(loc.fit.slices))], points_joint_slice_interpol_2);
+#	
 
 
 
