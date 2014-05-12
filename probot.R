@@ -17,7 +17,9 @@
 # https://wiki.fitbit.com/display/API/API-Get-Sleep
 #------------------------------------------------------------------------
 
+########################################################################################################################
 # purple robot data dir (downloaded postgres dbs extracted into csv format)
+########################################################################################################################
 data.dir <- "/home/afolarinbrc/workspace/Datasets/purple_robot_data/purple_dbs/csv/";
 setwd(data.dir);
 
@@ -45,7 +47,9 @@ sun.rs<- sun.rs[order(sun.rs$"timestamp"), ];
 weather.ug<- weather.ug[order(weather.ug$"timestamp"), ];
 
 
+########################################################################################################################
 #--------------------  fitbit data -------------------------------------------
+########################################################################################################################
 
 #Added cols
 #split eventDateTime
@@ -128,7 +132,9 @@ lapply(fitbit.ts, plot_acti_slice);
 
 
 
+########################################################################################################################
 #----------------------- locationProbe data -----------------------------------
+########################################################################################################################
 #Added cols
 #split eventDateTime
 location$"event_Date" <- sapply(strsplit(location$eventDateTime, "[ :]"), "[", 1);
@@ -229,8 +235,9 @@ lapply(loc.ts, plot_loc_slice);
 
 
 
-
+########################################################################################################################
 ##-------- get parallel time dataset for fitbit and location (here 09-24/04/2014)
+########################################################################################################################
 start.ts <- rownames(location[c("id","event_Date")][location$event_Date %in% "2014-04-09", ][1,]);
 end <- location[c("id","event_Date")][location$event_Date %in% "2014-04-24", ];
 end.ts <- rownames(end[nrow(end), ])
@@ -282,7 +289,9 @@ lapply(loc.fit.slices, plot_joint_slice);
 
 
 
+########################################################################################################################
 ##----- Now some noise reduction (try smooth, runmed and lowess)
+########################################################################################################################
 
 plot_joint_slice_smooth <- function(x)
 {
@@ -327,7 +336,9 @@ plot_joint_slice_smooth <- function(x)
 lapply(loc.fit.slices, plot_joint_slice_smooth);
 
 
+########################################################################################################################
 ###------------------------------Basic preprocessing for classification 
+########################################################################################################################
 
 # 1) Align the epochs - DONE above loc.fit.slices
 # 2) Impute the missing data - see library(zoo)
@@ -350,6 +361,33 @@ summary(fit);
 
 # really might be better to have logistic regression for SLEEP_MEASUREMENTS_DT_DURATION == 0 => sleep & SLEEP_MEASUREMENTS_DT_DURATION == 23760000 => awake
 # as this is really a boolean and not continuous in this context.
+
+
+plot_joint_slice_interpol <- function(x)
+{
+    d <- x[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "SLEEP_MEASUREMENTS_DT_DURATION")];
+    dz <- zoo(d);
+    index(dz) <- dz[, 1];
+    di <- na.approx(dz);
+
+    #quick look
+    x11(width=18, height=9);
+    n.cols <- colnames(d)[2:4];
+    n.leg <- length(n.cols);
+    matplot(di[, 1], scale(di)[, -1], pch=1:n.leg, col=1:n.leg, lty=2, yaxt="n", main="Latitude and Activity", sub=paste("24hr Slice, Day: ", (x$event_Date[1])), xlab="event timestamp", ylab="latitude and lightly active mins (rescaled)");
+
+    #axis(4, at=round(seq(min(d[, "LIGHTLY_ACTIVE_MINUTES"], na.rm=T), max(d[, "LIGHTLY_ACTIVE_MINUTES"], na.rm=T)), digits=2), las=2, cex.axis=0.7, tck=-.01);
+    #mtext("Lightly Active Minutes", side=4, line=3, cex.lab=1,las=3);
+    legend("topright", legend=n.cols, inset=.05, pch =1:n.leg, col=1:n.leg, cex=0.7);
+    abline(v=x$midnight_Hour.y);
+
+    savePlot(paste("joint-24hr-slice_interp_", x$event_Date[1], "_.jpg", sep=""));
+
+}
+
+
+#lapply(loc.fit.slices[[-1]], plot_joint_slice_interpol);
+lapply(loc.fit.slices[c(-1, -length(loc.fit.slices))], plot_joint_slice_interpol);
 
 
 
