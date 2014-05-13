@@ -52,7 +52,7 @@ weather.ug<- weather.ug[order(weather.ug$"timestamp"), ];
 ########################################################################################################################
 
 #Added cols
-#split eventDateTime
+#split eventDateTime  ### **NICE** way to do this....because strsplit returns a list, so do sapply to select 
 fitbit$"event_Date" <- sapply(strsplit(fitbit$eventDateTime, "[ :]"), "[", 1);
 fitbit$"event_Hour" <- sapply(strsplit(fitbit$eventDateTime, "[ :]"), "[", 2);
 fitbit$"event_Min" <- sapply(strsplit(fitbit$eventDateTime, "[ :]"), "[", 3);
@@ -427,6 +427,32 @@ lapply(loc.fit.slices[c(-1, -length(loc.fit.slices))], plot_joint_slice_interpol
 #	# run over loc.fit.slices droping the first, second and last dataframes, which have partial days data
 #	lapply(loc.fit.slices[c(-1:2, -length(loc.fit.slices))], points_joint_slice_interpol_2);
 #	
+
+
+
+
+########################################################################################################################
+# A quick look at the sleep quality metrics from Fitbit
+########################################################################################################################
+
+# NB these all report totals for the whole day, to be useful need to qualify only these values from the sleep demarked periods
+
+awakenings.count <- sapply(loc.fit.slices, "[", "SLEEP_MEASUREMENTS_DT_AWAKENINGS_COUNT")
+sapply(awakenings.count, sum, na.rm=T);
+
+awake.count <- sapply(loc.fit.slices, "[", "SLEEP_MEASUREMENTS_DT_AWAKE_COUNT")
+sapply(awake.count, sum, na.rm=T);
+
+m.asleep <- sapply(loc.fit.slices, "[", "SLEEP_MEASUREMENTS_DT_MINUTES_ASLEEP")
+sapply(m.asleep, sum, na.rm=T);
+
+m.awake <- sapply(loc.fit.slices, "[", "SLEEP_MEASUREMENTS_DT_MINUTES_AWAKE")
+sapply(m.awake, sum, na.rm=T);
+
+restless.count <- sapply(loc.fit.slices, "[", "SLEEP_MEASUREMENTS_DT_RESTLESS_COUNT")
+sapply(restless.count, sum, na.rm=T);
+
+#Question for Fitbit API, why no minutes restless ??? 
 
 
 
