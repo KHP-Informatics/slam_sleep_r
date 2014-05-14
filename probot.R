@@ -454,5 +454,8 @@ sapply(restless.count, sum, na.rm=T);
 
 #Question for Fitbit API, why no minutes restless ??? 
 
-
+# correlation seems ok between awake.count and mins awake...
+plot(scale(sapply(awake.count, sum, na.rm=T)));
+lines(scale(sapply(m.awake, sum, na.rm=T)), type='p', pch=1, col='red');
+lines(scale(sapply(restless.count, sum, na.rm=T)), type='p', pch=2, col='blue');
 
