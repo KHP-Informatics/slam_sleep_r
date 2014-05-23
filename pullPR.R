@@ -9,20 +9,47 @@
 # Interface with the PR database for R
 #------------------------------------------------------------------------
 
-require("RODBC");
+#require("RODBC");
+require("RPostgreSQL");
 require("zoo");
 
 
-#------------------------------------------------------------------------
-# Create a connection to a user database in the PR Warehouse 
-#------------------------------------------------------------------------
+#get Args
 args <- commandArgs();
 
-server_url <- args[1]; 
-username <- args[2];
-password <- args[3];
+#------------------------------------------------------------------------
+# Create a connection to a user database in the PR Warehouse with RODBC
+# require odbc driver, and dsn (data source name) defined (see docs)
+#------------------------------------------------------------------------
+#con <- odbcConnect(dsn="PRWarehouse", uid = username, pwd = password);
+#tables <- sqlTables(con); # can iterate over these if neccessary, or specify a list # TODO
+#
+##for the time being just select specific ones:
+#AccelerometerProbe <- sqlQuery(sh, "SELECT * FROM AccelerometerProbe");
+#FitBitApiFeature <- sqlQuery(sh, "SELECT * FROM FitBitApiFeature");
+#LocationProbe <- sqlQuery(sh, "SELECT * FROM LocationProbe");
+#ScreenProbe <- sqlQuery(sh, "SELECT * FROM ScreenProbe");
+#TemperatureProbe <- sqlQuery(sh, "SELECT * FROM TemperatureProbe");
+#DeviceInUseFeature <- sqlQuery(sh, "SELECT * FROM DeviceInUseFeature");
+#LightProbe <- sqlQuery(sh, "SELECT * FROM LightProbe");
+#RobotHealthProbe <- sqlQuery(sh, "SELECT * FROM RobotHealthProbe");
+#SunriseSunsetFeature <- sqlQuery(sh, "SELECT * FROM SunriseSunsetFeature");
+#WeatherUndergroundFeature <- sqlQuery(sh, "SELECT * FROM WeatherUndergroundFeature");
+#GyroscopeProbe <- sqlQuery(sh, "SELECT * FROM GyroscopeProbe");
+#
 
-con <- odbcConnect(dsn=server_url, uid = username, pwd = password);
+#------------------------------------------------------------------------
+# Create a connection to a user database in the PR Warehouse RPostgreSQL
+#------------------------------------------------------------------------
+
+dbhost <- args[1]; 
+port <- args[2];
+dbname <- args[3];
+dbuser <- args[4];
+dbpass <- args[5];
+
+drv <- dbDriver("PostgreSQL");
+con <- dbConnect(drv, host=dbhost, port=dbport, dbname=dbname, user=dbuser, password=dbpass);
 
 #------------------------------------------------------------------------
 # Get table(s) from the PR Warehouse user database
@@ -30,17 +57,41 @@ con <- odbcConnect(dsn=server_url, uid = username, pwd = password);
 tables <- sqlTables(con); # can iterate over these if neccessary, or specify a list # TODO
 
 #for the time being just select specific ones:
-AccelerometerProbe <- sqlQuery(sh, paste("SELECT * FROM AccelerometerProbe");
-FitBitApiFeature <- sqlQuery(sh, paste("SELECT * FROM FitBitApiFeature");
-LocationProbe <- sqlQuery(sh, paste("SELECT * FROM LocationProbe");
-ScreenProbe <- sqlQuery(sh, paste("SELECT * FROM ScreenProbe");
-TemperatureProbe <- sqlQuery(sh, paste("SELECT * FROM TemperatureProbe");
-DeviceInUseFeature <- sqlQuery(sh, paste("SELECT * FROM DeviceInUseFeature");
-LightProbe <- sqlQuery(sh, paste("SELECT * FROM LightProbe");
-RobotHealthProbe <- sqlQuery(sh, paste("SELECT * FROM RobotHealthProbe");
-SunriseSunsetFeature <- sqlQuery(sh, paste("SELECT * FROM SunriseSunsetFeature");
-WeatherUndergroundFeature <- sqlQuery(sh, paste("SELECT * FROM WeatherUndergroundFeature");
-GyroscopeProbe <- sqlQuery(sh, paste("SELECT * FROM GyroscopeProbe");
+rs <- dbSendQuery(con, 'SELECT * FROM "AccelerometerProbe"');
+AccelerometerProbe <-fetch(rs,n=-1);
+
+rs <- dbSendQuery(con, 'SELECT * FROM "FitBitApiFeature"');
+FitBitApiFeature <- fetch(rs,n=-1); 
+
+rs <- dbSendQuery(con, 'SELECT * FROM "LocationProbe"');
+LocationProbe <- fetch(rs,n=-1);
+
+rs <- dbSendQuery(con, 'SELECT * FROM "ScreenProbe"');
+ScreenProbe <- fetch(rs,n=-1);
+
+rs <- dbSendQuery(con, 'SELECT * FROM "TemperatureProbe"');
+TemperatureProbe <- fetch(rs,n=-1);
+
+rs <- dbSendQuery(con, 'SELECT * FROM "DeviceInUseFeature"');
+DeviceInUseFeature <- fetch(rs,n=-1);
+
+rs <- dbSendQuery(con, 'SELECT * FROM "LightProbe"');
+LightProbe <- fetch(rs,n=-1);
+
+rs <- dbSendQuery(con, 'SELECT * FROM "RobotHealthProbe"');
+RobotHealthProbe <- fetch(rs,n=-1);
+
+rs <- dbSendQuery(con, 'SELECT * FROM "SunriseSunsetFeature"');
+SunriseSunsetFeature <- fetch(rs,n=-1);
+
+rs <- dbSendQuery(con, 'SELECT * FROM "WeatherUndergroundFeature"');
+WeatherUndergroundFeature <- fetch(rs,n=-1);
+
+rs <- dbSendQuery(con, 'SELECT * FROM "GyroscopeProbe"');
+GyroscopeProbe <- fetch(rs,n=-1);
+
+#close db connection
+dbDisconnect(con);
 
 
 #------------------------------------------------------------------------
