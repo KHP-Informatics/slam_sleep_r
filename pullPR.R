@@ -10,7 +10,7 @@
 #------------------------------------------------------------------------
 
 #require("RODBC");
-require("RPostgreSQL");
+require("RPostgreSQL");  #docs https://code.google.com/p/rpostgresql/
 require("zoo");
 
 
@@ -51,10 +51,12 @@ dbpass <- args[5];
 drv <- dbDriver("PostgreSQL");
 con <- dbConnect(drv, host=dbhost, port=dbport, dbname=dbname, user=dbuser, password=dbpass);
 
+dbGetInfo(con);
+
 #------------------------------------------------------------------------
 # Get table(s) from the PR Warehouse user database
 #------------------------------------------------------------------------
-tables <- sqlTables(con); # can iterate over these if neccessary, or specify a list # TODO
+tables <- dbListTables(con); # can iterate over these if neccessary, or specify a list # TODO
 
 #for the time being just select specific ones:
 rs <- dbSendQuery(con, 'SELECT * FROM "AccelerometerProbe"');
@@ -78,8 +80,8 @@ DeviceInUseFeature <- fetch(rs,n=-1);
 rs <- dbSendQuery(con, 'SELECT * FROM "LightProbe"');
 LightProbe <- fetch(rs,n=-1);
 
-rs <- dbSendQuery(con, 'SELECT * FROM "RobotHealthProbe"');
-RobotHealthProbe <- fetch(rs,n=-1);
+#rs <- dbSendQuery(con, 'SELECT * FROM "RobotHealthProbe"');
+#RobotHealthProbe <- fetch(rs,n=-1);
 
 rs <- dbSendQuery(con, 'SELECT * FROM "SunriseSunsetFeature"');
 SunriseSunsetFeature <- fetch(rs,n=-1);
@@ -92,7 +94,7 @@ GyroscopeProbe <- fetch(rs,n=-1);
 
 #close db connection
 dbDisconnect(con);
-
+dbUnloadDriver(drv);
 
 #------------------------------------------------------------------------
 # Order by timestamp
@@ -112,7 +114,6 @@ ScreenProbe <- order.by.timestamp(ScreenProbe);
 TemperatureProbe <- order.by.timestamp(TemperatureProbe);
 DeviceInUseFeature <- order.by.timestamp(DeviceInUseFeature);
 LightProbe <- order.by.timestamp(LightProbe);
-RobotHealthProbe <- order.by.timestamp(RobotHealthProbe);
 SunriseSunsetFeature <- order.by.timestamp(SunriseSunsetFeature);
 WeatherUndergroundFeature <- order.by.timestamp(WeatherUndergroundFeature);
 GyroscopeProbe <- order.by.timestamp(GyroscopeProbe);
@@ -123,19 +124,44 @@ GyroscopeProbe <- order.by.timestamp(GyroscopeProbe);
 # Append columns for date and time values 
 #------------------------------------------------------------------------
 
+## original data eventDateTime SEEMS TO BE CHANGED! eventDateTime no longer "2014-03-27 15:20:06" but a variety of other formats 
+# FIX by converting timestamps into datetime.
+
+#convert the actual timestamps into a datetime column
+add.timestamp.date <- function(table)
+{
+    table$"timestamp_datetime" <- as.character(as.POSIXct(table$timestamp, origin="1970-01-01"));
+    return(table);
+}
+
+
+# add new datetime fields
+AccelerometerProbe <- add.timestamp.date(AccelerometerProbe);
+FitBitApiFeature <- add.timestamp.date(FitBitApiFeature);
+LocationProbe <- add.timestamp.date(LocationProbe);
+ScreenProbe <- add.timestamp.date(ScreenProbe);
+TemperatureProbe <- add.timestamp.date(TemperatureProbe);
+DeviceInUseFeature <- add.timestamp.date(DeviceInUseFeature);
+LightProbe <- add.timestamp.date(LightProbe);
+SunriseSunsetFeature <- add.timestamp.date(SunriseSunsetFeature);
+WeatherUndergroundFeature <- add.timestamp.date(WeatherUndergroundFeature);
+GyroscopeProbe <- add.timestamp.date(GyroscopeProbe);
+
+
+
 # Add separate date/time information and mark the midnight hour timestamp values
 add.split.date <- function(table)
 {
-    table$"event_Date" <- sapply(strsplit(table$eventDateTime, "[ :]"), "[", 1);
-    table$"event_Hour" <- sapply(strsplit(table$eventDateTime, "[ :]"), "[", 2); 
-    table$"event_Min" <- sapply(strsplit(table$eventDateTime, "[ :]"), "[", 3); 
-    table$"event_Sec" <- sapply(strsplit(table$eventDateTime, "[ :]"), "[", 4); 
+    table$"event_Date" <- sapply(strsplit(table$timestamp_datetime, "[ :]"), "[", 1);
+    table$"event_Hour" <- sapply(strsplit(table$timestamp_datetime, "[ :]"), "[", 2); 
+    table$"event_Min" <- sapply(strsplit(table$timestamp_datetime, "[ :]"), "[", 3); 
+    table$"event_Sec" <- sapply(strsplit(table$timestamp_datetime, "[ :]"), "[", 4); 
     table$"midnight_Hour"[table$event_Hour == "00"] <- table$timestamp[table$event_Hour == "00"];
 
     return(table);
 }
 
-# Merge 
+# add new datetime fields
 AccelerometerProbe <- add.split.date(AccelerometerProbe);
 FitBitApiFeature <- add.split.date(FitBitApiFeature);
 LocationProbe <- add.split.date(LocationProbe);
@@ -143,7 +169,6 @@ ScreenProbe <- add.split.date(ScreenProbe);
 TemperatureProbe <- add.split.date(TemperatureProbe);
 DeviceInUseFeature <- add.split.date(DeviceInUseFeature);
 LightProbe <- add.split.date(LightProbe);
-RobotHealthProbe <- add.split.date(RobotHealthProbe);
 SunriseSunsetFeature <- add.split.date(SunriseSunsetFeature);
 WeatherUndergroundFeature <- add.split.date(WeatherUndergroundFeature);
 GyroscopeProbe <- add.split.date(GyroscopeProbe);
@@ -171,9 +196,14 @@ merged.data <- merge.tables.on.time(LocationProbe, FitBitApiFeature);
 
 #so probably have a garguantuan table, but likelyhood is we will only want a subset of probes & columns... so economise when this is clearer
 
+
+
 #------------------------------------------------------------------------
 # Interpolate the parsed data to estimate missing values
 # (probably want to subset the data to interesting columns... but will try to interp all cols first, great IF it works)
+
+# NB! interpolation will error out if there are not at least 2 non-NA values to interpolate in the column, 
+# TODO can automate dropping of columns matching this criteria, then could interp everything, but for now just select columns of interest.
 #------------------------------------------------------------------------
 interp.data <- function(table)
 {
@@ -182,7 +212,13 @@ interp.data <- function(table)
     return(na.approx(dz));
 }
 
-merged.data.interp <- interp.data(merged.data);
+# for now select columns of interest from each table merged.... then interpolate these see NB above:
+fitbit.coi <- c("VERY_ACTIVE_MINUTES", "FAIRLY_ACTIVE_MINUTES", "LIGHTLY_ACTIVE_MINUTES", "SEDENTARY_MINUTES", "ACTIVITY_CALORIES", "SLEEP_MEASUREMENTS_DT_AWAKENINGS_COUNT", "SLEEP_MEASUREMENTS_DT_AWAKE_COUNT", "SLEEP_MEASUREMENTS_DT_DURATION", "SLEEP_MEASUREMENTS_DT_MINUTES_ASLEEP", "SLEEP_MEASUREMENTS_DT_MINUTES_AWAKE", "SLEEP_MEASUREMENTS_DT_MINUTES_IN_BED_AFTER", "SLEEP_MEASUREMENTS_DT_MINUTES_IN_BED_BEFORE", "SLEEP_MEASUREMENTS_DT_RESTLESS_COUNT", "SLEEP_MEASUREMENTS_DT_TIME_IN_BED", "STEPS");
+location.coi <- c("ALTITUDE", "BEARING", "SPEED", "LONGITUDE", "LATITUDE", "ACCURACY");
+
+# interpolate 'em
+merged.data.interp <- interp.data(merged.data[, c("timestamp", fitbit.coi, location.coi)]);
+
 
 #------------------------------------------------------------------------
 # Smooth the Interpolated data
