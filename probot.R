@@ -360,8 +360,18 @@ matplot(di[, 1], scale(di)[, -1]);
 fit <- lm(SLEEP_MEASUREMENTS_DT_DURATION ~ 0 + LATITUDE + LIGHTLY_ACTIVE_MINUTES, di);
 summary(fit);
 
+
+# Model  and Cross Validation -- quickie..
+
+
+
+
 # really might be better to have logistic regression for SLEEP_MEASUREMENTS_DT_DURATION == 0 => sleep & SLEEP_MEASUREMENTS_DT_DURATION == 23760000 => awake
 # as this is really a boolean and not continuous in this context.
+
+
+
+
 
 #---- plot each 24hr slide of the joined interpol smooth data
 plot_joint_slice_interpol <- function(x)
