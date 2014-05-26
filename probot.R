@@ -345,7 +345,7 @@ lapply(loc.fit.slices, plot_joint_slice_smooth);
 # 4) Run classification 
 
 require("zoo");
-# try with one 24hr slice
+#----- try with one 24hr slice
 d <- loc.fit.slices[[10]][, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "SLEEP_MEASUREMENTS_DT_DURATION")];
 dz <- zoo(d);
 index(dz) <- dz[, 1];
@@ -362,6 +362,44 @@ summary(fit);
 
 
 # Model  and Cross Validation -- quickie..
+
+
+##----- Lets try that with data from all days stacked -- not really v sophisticated, and almost certainly the wrong way to do this.
+d <- loc.fit.merge[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "SLEEP_MEASUREMENTS_DT_DURATION")];
+dz <- zoo(d);
+index(dz) <- dz[, 1];
+di <- na.approx(dz);
+
+#quick look
+x11(width=18, height=9);
+matplot(di[, 1], scale(di)[, -1]);
+savePlot("/home/afolarinbrc/workspace/Datasets/purple_robot_data/purple_dbs/csv/training_data_raw_lat_lam_sdur.jpg");
+
+# model
+#fit <- lm(SLEEP_MEASUREMENTS_DT_DURATION ~ LATITUDE + LIGHTLY_ACTIVE_MINUTES, di)
+fit <- lm(SLEEP_MEASUREMENTS_DT_DURATION ~ 0 + LATITUDE + LIGHTLY_ACTIVE_MINUTES, di);
+summary(fit);
+
+
+
+## 2 days have no sleep diary, remove for pairwise complete set
+loc.fit.merge.comp <- loc.fit.merge[!loc.fit.merge$event_Date %in% c("2014-04-12", "2014-04-17"), ]
+
+d <- loc.fit.merge.comp[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "SLEEP_MEASUREMENTS_DT_DURATION")];
+dz <- zoo(d);
+index(dz) <- dz[, 1];
+di <- na.approx(dz);
+
+#quick look
+x11(width=18, height=9);
+matplot(di[, 1], scale(di)[, -1]);
+savePlot("/home/afolarinbrc/workspace/Datasets/purple_robot_data/purple_dbs/csv/training_data_comp_lat_lam_sdur.jpg");
+
+# model
+#fit <- lm(SLEEP_MEASUREMENTS_DT_DURATION ~ LATITUDE + LIGHTLY_ACTIVE_MINUTES, di)
+fit <- lm(SLEEP_MEASUREMENTS_DT_DURATION ~ 0 + LATITUDE + LIGHTLY_ACTIVE_MINUTES, di);
+summary(fit);
+
 
 
 
