@@ -37,8 +37,6 @@ tablenames <- args[8:length(args)];
 startpoint <- args[6];
 endpoint <- args[7];
 
-#---- a list of tables
-tables <- list();
 
 #------------------------------------------------------------------------
 # Connect and get table(s) from the PR Warehouse user database
@@ -50,7 +48,7 @@ dbGetInfo(con);
 
 
 
-getTables <- function(sql.query, close.con=FALSE)
+getTable <- function(sql.query, close.con=FALSE)
 {
     #for the time being just select specific ones:
     rs <- dbSendQuery(con,sql.query);
@@ -68,18 +66,22 @@ getTables <- function(sql.query, close.con=FALSE)
 
 
 #------------------------------------------------------------------------
-# Stub: read a set of tables from PRW, populating the tables list
+# Stub code: read a set of tables from PRW, populating the tables list
 #------------------------------------------------------------------------
-for(i in tablenames)
+getTables <- function(tablenames)
 {
-    #build sql query
-    sql.query <- paste('SELECT * FROM "', tablenames[i], '" WHERE timestamp >= ', startpoint, 'AND WHERE timestamp <= ', endpoint, '');
-    getTables(sql.query);
-    
-    if (i == length(tablenames))
+    for(i in tablenames)
     {
-         tables[[i]] <- getTables(sql.query, close.con=TRUE);
+        #build sql query
+        sql.query <- paste('SELECT * FROM "', tablenames[i], '" WHERE timestamp >= ', startpoint, 'AND WHERE timestamp <= ', endpoint, '');
+        getTable(sql.query);
+
+        if (i == length(tablenames))
+        {
+            tables[[i]] <- getTables(sql.query, close.con=TRUE);
+        }
+        return(tables)
     }
 }
 
-
+myTables <- getTables(tablenames)
