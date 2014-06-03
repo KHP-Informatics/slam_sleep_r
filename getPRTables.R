@@ -6,7 +6,7 @@
 
 
 #------------------------------------------------------------------------
-# Interface with the PR database for R
+# Interface with the Purple Robot Warehouse (PRW) database for R
 # Extract the required set of data for a chunk of sleep status to 
 # forward on to MyHealthLocker/HealthVault
 #------------------------------------------------------------------------
@@ -30,12 +30,15 @@ dbuser <- args[4];
 dbpass <- args[5];
 
 #--- sql query info
+#tablenames
+tablenames <- args[8:length(args)];
 #time range
+#all <- TRUE
 startpoint <- args[6];
 endpoint <- args[7];
-#tables
-tables <- args[8:length(args)];
 
+#---- a list of tables
+tables <- list();
 
 #------------------------------------------------------------------------
 # Connect and get table(s) from the PR Warehouse user database
@@ -44,6 +47,7 @@ tables <- args[8:length(args)];
 drv <- dbDriver("PostgreSQL");
 con <- dbConnect(drv, host=dbhost, port=dbport, dbname=dbname, user=dbuser, password=dbpass);
 dbGetInfo(con);
+
 
 
 getTables <- function(sql.query, close.con=FALSE)
@@ -60,6 +64,22 @@ getTables <- function(sql.query, close.con=FALSE)
     }
 
     return(table);
+}
+
+
+#------------------------------------------------------------------------
+# Stub: read a set of tables from PRW, populating the tables list
+#------------------------------------------------------------------------
+for(i in tablenames)
+{
+    #build sql query
+    sql.query <- paste('SELECT * FROM "', tablenames[i], '" WHERE timestamp >= ', startpoint, 'AND WHERE timestamp <= ', endpoint, '');
+    getTables(sql.query);
+    
+    if (i == length(tablenames))
+    {
+         tables[[i]] <- getTables(sql.query, close.con=TRUE);
+    }
 }
 
 

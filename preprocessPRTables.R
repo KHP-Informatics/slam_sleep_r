@@ -76,7 +76,7 @@ merged.data <- merge.tables.on.time(LocationProbe, FitBitApiFeature);
 #------------------------------------------------------------------------
 interp.data <- function(table, cols="")
 {
-# TODO -- some processing req.
+    #some processing req.
     #option a) should really validate before interpolate, i.e. only merge columns where there is at least 2 real values, and generate warning
     interpable.cols <- apply(table, 2, function(x){ sum(is.na(x)) >= 2 } );
     #option b) provide a set of columns from the table on which to interpolate
@@ -101,30 +101,36 @@ noise.filter <- function(table)
 }
 
 
-#============================ END ========================================
-
-
+#==================== END OF PREPROCESSING FUNCs ========================
 
 
 
 #------------------------------------------------------------------------
-# Run the preprocessing functions
-# running 2 tables at a time, so if you want more than 2 tables recycle 
-# the output of this with additional ones recursively
+# Preprocess two tables: sort, add time cols, join, join, interpolate 
 #------------------------------------------------------------------------
+
 preprocess.tables <- function(table1, table2)
 {
     table1 <- order.by.timestamp(table1);
-    table2 <- order.by.timestamp(table2);
     table1 <- add.timestamp.date(table1);
-    table2 <- add.timestamp.date(table2);
     table1 <- add.split.date(table1);
+    table2 <- order.by.timestamp(table2);
+    table2 <- add.timestamp.date(table2);
     table2 <- add.split.date(table2);
-    # should really validate before interpolate, i.e. only merge columns where there is at least 2 real values, and generate warning
     tables.m <- merge.tables.on.time(table1, table2);
-    
-    interp.data()
-
+    tables.mi <- interp.data(tables.m);
+#   tables.mif <- noise.filter(tables.mi);
+    return(table.mi);
 }
 
+
+
+#------------------------------------------------------------------------
+# Stub code: Run a selection of preprocessing functions
+# running 2 tables at a time, so if you want more than 2 tables recycle 
+# the output of this with additional ones recursively
+#------------------------------------------------------------------------
+#some tables from the list of tables (tables) created in getTable.R
+
+active.data <- preprocess.tables(tables$FitBitApiFeature, tables$LocationProbe);
 
