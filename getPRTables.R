@@ -4,6 +4,8 @@
 # -- Email: amosfolarin@gmail.com                                       #
 #########################################################################
 
+#USAGE:
+# RScript getPRTables.R db2.cbits.northwestern.edu 5432 prw_database prw_usrname prw_passwoed 1397085335 1398326606 FitBitApiFeature LocationProbe  
 
 #------------------------------------------------------------------------
 # Interface with the Purple Robot Warehouse (PRW) database for R
@@ -24,18 +26,18 @@ args <- commandArgs();
 
 #--- db connect info
 dbhost <- args[1]; 
-port <- args[2];
+dbport <- args[2];
 dbname <- args[3];
 dbuser <- args[4];
 dbpass <- args[5];
 
 #--- sql query info
-#tablenames
-tablenames <- args[8:length(args)];
-#time range
 #all <- TRUE
 startpoint <- args[6];
 endpoint <- args[7];
+#tablenames
+tablenames <- args[8:length(args)];
+#time range
 
 
 #------------------------------------------------------------------------
@@ -68,20 +70,40 @@ getTable <- function(sql.query, close.con=FALSE)
 #------------------------------------------------------------------------
 # Stub code: read a set of tables from PRW, populating the tables list
 #------------------------------------------------------------------------
-getTables <- function(tablenames)
+getTables <- function(time.range="from.last")
 {
+    tables <- list();
     for(i in tablenames)
     {
-        #build sql query
-        sql.query <- paste('SELECT * FROM "', tablenames[i], '" WHERE timestamp >= ', startpoint, 'AND WHERE timestamp <= ', endpoint, '');
-        getTable(sql.query);
-
-        if (i == length(tablenames))
+        sql.query <- "";
+        
+        if(time.range=="from.last")
         {
-            tables[[i]] <- getTables(sql.query, close.con=TRUE);
+            #only specify start time, i.e. get everything from the startime on...
+            sql.query <- paste('SELECT * FROM "', i, '" WHERE timestamp >= ', startpoint,'', sep="");
         }
-        return(tables)
+
+        if(time.range=="from.to")
+        {
+            #build sql query
+            sql.query <- paste('SELECT * FROM "', i, '" WHERE timestamp >= ', startpoint, ' AND timestamp <= ', endpoint, '', sep="");
+            
+        }
+
+
+        tables[[i]] <- getTable(sql.query);
+
+        if (i == tablenames[length(tablenames)])
+        {
+            tables[[i]] <- getTable(sql.query, close.con=TRUE);
+        }
     }
+    
+    return(tables);
 }
 
-myTables <- getTables(tablenames)
+#e.g.# myTables <- getTables(tablenames, time.range="from.last")
+
+
+
+

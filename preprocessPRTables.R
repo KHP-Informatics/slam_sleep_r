@@ -132,5 +132,5 @@ preprocess.tables <- function(table1, table2)
 #------------------------------------------------------------------------
 #some tables from the list of tables (tables) created in getTable.R
 
-active.data <- preprocess.tables(tables$FitBitApiFeature, tables$LocationProbe);
+# active.data <- preprocess.tables(tables$FitBitApiFeature, tables$LocationProbe);
 
