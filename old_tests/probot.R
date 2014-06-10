@@ -361,7 +361,6 @@ fit <- lm(SLEEP_MEASUREMENTS_DT_DURATION ~ 0 + LATITUDE + LIGHTLY_ACTIVE_MINUTES
 summary(fit);
 
 
-# Model  and Cross Validation -- quickie..
 
 
 ##----- Lets try that with data from all days stacked -- not really v sophisticated, and almost certainly the wrong way to do this.
@@ -381,8 +380,133 @@ fit <- lm(SLEEP_MEASUREMENTS_DT_DURATION ~ 0 + LATITUDE + LIGHTLY_ACTIVE_MINUTES
 summary(fit);
 
 
+#----- now try a binary classification of sleep, first need to convert the sleep variable into a binary var (interpolation took out the NAs but introduced some intermediate values)
+#apply(loc.fit.merge, 2, function(x){ ifelse(sum(is.na(x))==length(x), TRUE, FALSE)})
 
-## 2 days have no sleep diary, remove for pairwise complete set
+#drop the two days withouth sleep measures
+loc.fit.merge.comp <- loc.fit.merge[!loc.fit.merge$event_Date %in% c("2014-04-12", "2014-04-17"), ]
+
+d <- loc.fit.merge.comp[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "SLEEP_MEASUREMENTS_DT_DURATION", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES", "SEDENTARY_MINUTES", "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "event_Hour.y")];  ## more inclusive set
+
+#d <- loc.fit.merge[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "SLEEP_MEASUREMENTS_DT_DURATION")];  
+#d <- loc.fit.merge[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "SLEEP_MEASUREMENTS_DT_DURATION", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES", "SEDENTARY_MINUTES", "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "event_Hour.y")];  ## more inclusive set
+
+
+
+d <- apply(d,2, as.numeric)
+d <- scale(d)
+dz <- zoo(d);
+index(dz) <- dz[, 1]; 
+di <- na.approx(dz);
+
+bin.k <- kmeans(di$SLEEP_MEASUREMENTS_DT_DURATION, centers=2, iter.max=100);  # simple kmeans 2 cluster classifier solves this easily
+
+#check - binary values ok
+plot(bin.k$cluster);
+#abline(v=which(bin.k$cluster == 1), col="red");
+lines(bin.k$cluster, lty=2);
+
+#sub back in the values -- *PROBLEM*  actually I see a problem here -- how do I guarantee which way round the labels will go if kmeans not deterministic!!
+centroid <- aggregate(di$SLEEP_MEASUREMENTS_DT_DURATION,by=list(bin.k$cluster),FUN=mean);
+centroid <- as.data.frame(centroid);
+if(centroid$centroid[1] < centroid$centroid[2])
+{
+    bin.k$cluster[bin.k$cluster == 1] <- 0 #sleep = 0
+    bin.k$cluster[bin.k$cluster == 2] <- 1 #wake = 1
+}else
+{
+    bin.k$cluster[bin.k$cluster == 1] <- 1 #sleep = 0
+    bin.k$cluster[bin.k$cluster == 2] <- 0 #wake = 1
+}
+
+di.k <- di
+di.k$SLEEP_MEASUREMENTS_DT_DURATION <- bin.k$cluster
+
+di.k2 <- as.data.frame(na.omit(di.k))
+di.k2$SLEEP_MEASUREMENTS_DT_DURATION <- as.factor(di.k2$SLEEP_MEASUREMENTS_DT_DURATION)
+
+
+##---- train logistic classifier
+logit.fit <- glm(SLEEP_MEASUREMENTS_DT_DURATION ~ LATITUDE + LIGHTLY_ACTIVE_MINUTES, family = binomial(logit), data = di.k2)
+
+# predict...
+logit.pred <- predict.glm(logit.fit, newdata=di.k2[, c(-1, -4)])
+anova(logit.fit, test="Chisq")
+
+#look at the training and predicted vals
+tmp <- cbind(unclass(di.k2$"SLEEP_MEASUREMENTS_DT_DURATION"), logit.pred)
+rownames(tmp) <- rownames(di.k2)
+x11();plot(rownames(tmp), tmp[,1])
+lines(rownames(tmp), tmp[,2], pch=5, col="green")
+
+
+
+
+#---- now try a naive Bayes classifier
+require("e1071")
+
+#cant get this syntax to work!!!!
+classifier <- naiveBayes(di.k2[, c("LATITUDE", "LIGHTLY_ACTIVE_MINUTES")], di.k2$"SLEEP_MEASUREMENTS_DT_DURATION") 
+pred <- predict(classifier, di.k2[, c("LATITUDE", "LIGHTLY_ACTIVE_MINUTES")])
+table(pred, di.k2["SLEEP_MEASUREMENTS_DT_DURATION"], dnn=list('actual', 'predicted'))
+
+#but this works!!
+classifier <- naiveBayes(SLEEP_MEASUREMENTS_DT_DURATION ~ ., data=di.k2)
+pred <- predict(classifier, di.k2[, c("LATITUDE", "LIGHTLY_ACTIVE_MINUTES")])
+#table(pred, di.k2["SLEEP_MEASUREMENTS_DT_DURATION"], dnn=list('predicted','actual'))
+table(di.k2$"SLEEP_MEASUREMENTS_DT_DURATION", pred, dnn=list('actual', 'predicted'))
+
+#look at the training and predicted vals
+tmp <- cbind(unclass(di.k2$"SLEEP_MEASUREMENTS_DT_DURATION"), unclass(pred))
+rownames(tmp) <- rownames(di.k2)
+x11();plot(rownames(tmp), tmp[,1])
+lines(rownames(tmp), tmp[,2], pch=5, col="green")
+
+
+
+
+# try using all variables prior to interpol
+classifier <- naiveBayes(SLEEP_MEASUREMENTS_DT_DURATION ~ ., data=loc.fit.merge)
+pred <- predict(classifier, loc.fit.merge[, c("LATITUDE", "LIGHTLY_ACTIVE_MINUTES")])
+#table(pred, di.k2["SLEEP_MEASUREMENTS_DT_DURATION"], dnn=list('predicted','actual'))
+table(loc.fit.merge$"SLEEP_MEASUREMENTS_DT_DURATION",pred, dnn=list('actual', 'predicted'))
+
+# try with the caret package
+require("klaR")
+require("caret")
+
+#x <- di.k2[, c("LATITUDE", "LIGHTLY_ACTIVE_MINUTES")]
+x <- di.k2[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES", "SEDENTARY_MINUTES", "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "event_Hour.y")]
+y <- di.k2$"SLEEP_MEASUREMENTS_DT_DURATION" #must be a factor not dataframe
+
+classifier2 <- train(x,y,'nb', trControl=trainControl(method='cv', number=10))
+pred2 <- predict(classifier2$finalModel, x)$class
+table(y, pred2, dnn=list('actual', 'predicted'))
+
+#look at the training and predicted vals
+tmp <- cbind(unclass(y), unclass(pred2))
+rownames(tmp) <- rownames(di.k2)
+x11();plot(rownames(tmp), tmp[,1])
+lines(rownames(tmp), tmp[,2], pch=5, col="green")
+
+
+###---- now try random forest classification
+function()
+{
+
+}
+require("caret")
+set.seed(998)
+inTraining <- createDataPartition(Sonar$Class, p = 0.75, list = FALSE)
+training <- Sonar[inTraining, ]
+testing <- Sonar[-inTraining, ]
+
+
+
+
+
+
+##================== 2 days have no sleep diary, remove for pairwise complete set
 loc.fit.merge.comp <- loc.fit.merge[!loc.fit.merge$event_Date %in% c("2014-04-12", "2014-04-17"), ]
 
 d <- loc.fit.merge.comp[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "SLEEP_MEASUREMENTS_DT_DURATION")];

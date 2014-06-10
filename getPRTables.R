@@ -49,8 +49,11 @@ con <- dbConnect(drv, host=dbhost, port=dbport, dbname=dbname, user=dbuser, pass
 dbGetInfo(con);
 
 
-
-getTable <- function(sql.query, close.con=FALSE)
+#------------------------------------------------------------------------
+# get a table from PRW with for a given SQL query
+# returns: a dataframe with all results returned
+#------------------------------------------------------------------------
+getTable <- function(sql.query="", close.con=FALSE)
 {
     #for the time being just select specific ones:
     rs <- dbSendQuery(con,sql.query);
@@ -68,15 +71,23 @@ getTable <- function(sql.query, close.con=FALSE)
 
 
 #------------------------------------------------------------------------
-# Stub code: read a set of tables from PRW, populating the tables list
+# Read a set of tables from PRW from a given time range.
+# returns: list of dataframes (each table in tablenames) with records 
+# from time range
 #------------------------------------------------------------------------
-getTables <- function(time.range="from.last")
+getTables <- function(tablenames, time.range="all.time")
 {
     tables <- list();
     for(i in tablenames)
     {
         sql.query <- "";
         
+        if(time.range=="all.time")
+        {
+            #default: return all records in table
+            sql.query <- paste('SELECT * FROM "', i, '"', sep="");
+        }
+
         if(time.range=="from.last")
         {
             #only specify start time, i.e. get everything from the startime on...
@@ -91,12 +102,13 @@ getTables <- function(time.range="from.last")
         }
 
 
-        tables[[i]] <- getTable(sql.query);
 
-        if (i == tablenames[length(tablenames)])
-        {
-            tables[[i]] <- getTable(sql.query, close.con=TRUE);
-        }
+        #if (i == tablenames[length(tablenames)]) #on the last table close
+        #{
+        #    tables[[i]] <- getTable(sql.query, close.con=TRUE);
+        #}
+        
+        tables[[i]] <- getTable(sql.query);
     }
     
     return(tables);
