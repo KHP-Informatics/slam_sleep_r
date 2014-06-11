@@ -73,22 +73,35 @@ merged.data <- merge.tables.on.time(LocationProbe, FitBitApiFeature);
 # (probably want to subset the data to interesting columns... but will try to interp all cols first, great IF it works)
 # NB! interpolation will error out if there are not at least 2 non-NA values to interpolate in the column, 
 # TODO can automate dropping of columns matching this criteria, then could interp everything, but for now just select columns of interest.
+# table: dataframe PR table
+# cols: set of columns of interest, defaults to columns which with values
+# that are not all NA
 #------------------------------------------------------------------------
-interp.data <- function(table, cols="")
+interp.data <- function(table, cols=NULL)
 {
     #some processing req.
-    #option a) should really validate before interpolate, i.e. only merge columns where there is at least 2 real values, and generate warning
-    interpable.cols <- apply(table, 2, function(x){ sum(is.na(x)) >= 2 } );
-    #option b) provide a set of columns from the table on which to interpolate
-    if(cols != "")
+       
+    if(!is.null(cols))
     {
+        #option a) provide a set of columns from the table on which to interpolate
         table <- table[, cols];
+    }else
+    { 
+        #option b) should really validate before interpolate, i.e. only merge columns where there is at least 2 real values, and generate warning
+        interpable.cols <- apply(table, 2, function(x){ sum(is.na(x)) >= length(x)-2 } );
+        table <- table[, interpable.cols];
     }
+
 
     dz <- zoo(table);
     index(dz) <- dz[, 1];
-    return(na.approx(dz));
+
+    dz <- as.data.frame(na.approx(dz), stringsAsFactors=FALSE) #somewhere in this process timestamp and others are being turned into factors !!! find and kill!!!!  }
+    #fix for wierd factor typing in data.frame conversion of zoo type.... think this is a bug.
+    dz <- apply(dz, 2, "[")
+    return(as.data.frame(dz, stringsAsFactors=FALSE))
 }
+
 
 
 
@@ -109,8 +122,9 @@ noise.filter <- function(table)
 # Preprocess two tables: sort, add time cols, join, join, interpolate 
 #------------------------------------------------------------------------
 
-preprocess.tables <- function(table1, table2)
+preprocess.tables <- function(table1, table2, interp.on.columns)
 {
+
     table1 <- order.by.timestamp(table1);
     table1 <- add.timestamp.date(table1);
     table1 <- add.split.date(table1);
@@ -118,9 +132,16 @@ preprocess.tables <- function(table1, table2)
     table2 <- add.timestamp.date(table2);
     table2 <- add.split.date(table2);
     tables.m <- merge.tables.on.time(table1, table2);
-    tables.mi <- interp.data(tables.m);
-#   tables.mif <- noise.filter(tables.mi);
-    return(table.mi);
+    tables.mi <- NULL
+    if(!is.null(interp.on.columns))
+    {
+        tables.mi <- interp.data(tables.m, cols=interp.on.columns);
+    }else
+    {
+        tables.mi <- interp.data(tables.m);
+    }
+    #    tables.mif <- noise.filter(tables.mi);  #TODO
+    return(tables.mi);
 }
 
 

@@ -491,17 +491,17 @@ lines(rownames(tmp), tmp[,2], pch=5, col="green")
 
 
 ###---- now try random forest classification
-function()
-{
 
-}
 require("caret")
+require("gbm")
 set.seed(998)
-inTraining <- createDataPartition(Sonar$Class, p = 0.75, list = FALSE)
-training <- Sonar[inTraining, ]
-testing <- Sonar[-inTraining, ]
-
-
+inTraining <- createDataPartition(di.k2$SLEEP_MEASUREMENTS_DT_DURATION, p = 0.75, list = FALSE)
+training <- di.k2[inTraining, ]
+testing <- di.k2[-inTraining, ]
+fitControl <- trainControl(method = "repeatedcv", number = 10, repeats = 10)
+set.seed(825)
+gbmFit1 <- train(SLEEP_MEASUREMENTS_DT_DURATION ~ ., data = training, method = "gbm", trControl = fitControl, Verbose = FALSE, tuneLength=11)
+gbmFit1
 
 
 
