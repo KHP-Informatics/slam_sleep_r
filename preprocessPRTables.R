@@ -153,5 +153,8 @@ preprocess.tables <- function(table1, table2, interp.on.columns)
 #------------------------------------------------------------------------
 #some tables from the list of tables (tables) created in getTable.R
 
-# active.data <- preprocess.tables(tables$FitBitApiFeature, tables$LocationProbe);
+#e.g. ** currently not all the talbes will pass the interpolation step, prob. want to subset out the cols that very sparsely populated.
+# cols <- c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES", "SEDENTARY_MINUTES", "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "SLEEP_MEASUREMENTS_DT_DURATION", "event_Hour.y")
+# active.data <- preprocess.tables(tables$FitBitApiFeature, tables$LocationProbe, c);
+
 
