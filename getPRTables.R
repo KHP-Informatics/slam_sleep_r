@@ -117,5 +117,14 @@ getTables <- function(tablenames, time.range="all.time")
 #e.g.# myTables <- getTables(tablenames, time.range="from.last")
 
 
+# The data coming out is getting eventDateTime and insertDateTime listed as POSIXct, this can be fished out and stringified if necessary
+# as R can whinge a bit about POSIX types in dataframes
+# so
+# posixct.cols <- (sapply(sapply(myTables, class), "[", 1)) %in% "POSIXct"
+# myTables[posixct.cols] <-lapply(myTables[posixct.ct], as.character) 
+
+
+
+
 
 
