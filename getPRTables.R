@@ -124,7 +124,7 @@ getTable <- function(sql.query="", date2char=TRUE, close.con=FALSE)
 # EXAMPLE:
 # initArgs()
 # makeDBConnection()
-#e.g. myTables <- getTables(tablenames)
+# myTables <- getTables(tablenames)
 #------------------------------------------------------------------------
 #getTables <- function(tablenames, time.range="all.time")
 getTables <- function(tablenames, time.range=NULL)
