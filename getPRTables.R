@@ -16,48 +16,91 @@
 #require("RODBC");
 require("RPostgreSQL");  #docs https://code.google.com/p/rpostgresql/
 
-#get Args
-args <- commandArgs();
 
 
 #------------------------------------------------------------------------
-# Create a connection to a user database in the PR Warehouse RPostgreSQL
+# global variables
 #------------------------------------------------------------------------
 
-#--- db connect info
-dbhost <- args[1]; 
-dbport <- args[2];
-dbname <- args[3];
-dbuser <- args[4];
-dbpass <- args[5];
+dbhost <- NULL;
+dbport <- NULL;
+dbname <- NULL;
+dbuser <- NULL;
+dbpass <- NULL;
+startpoint  <- NULL;         
+endpoint <- NULL; 
+tablenames <- NULL; 
+startpoint  <- NULL
+endpoint <- NULL
+tablenames <- NULL
+#db connection
+con <- NULL
 
-#--- sql query info
-#all <- TRUE
-startpoint <- args[6];
-endpoint <- args[7];
-#tablenames
-tablenames <- args[8:length(args)];
-#time range
+#------------------------------------------------------------------------
+#Initialize from Rscript CLI args alternatively init in console
+# ARG args: array of args to initialize with or CLI args from RScript (default)
+# EXAMPLE:
+#   initArgs() # use commandArgs()
+#   initArgs(args)  #specify a commandArgs() vector
+#------------------------------------------------------------------------
+initArgs <- function(args=commandArgs())
+{
+    #get Args
+    #args <- commandArgs();
 
+    #--- db connect info
+    dbhost <<- args[2]; 
+    dbport <<- args[3];
+    dbname <<- args[4];
+    dbuser <<- args[5];
+    dbpass <<- args[6];
+
+    #--- sql query info
+    #all <- TRUE
+    startpoint <<- args[7];
+    endpoint <<- args[8];
+    #tablenames
+    tablenames <<- args[9:length(args)];
+    #time range
+}
 
 #------------------------------------------------------------------------
 # Connect and get table(s) from the PR Warehouse user database
 #------------------------------------------------------------------------
-#tables <- dbListTables(con); # can iterate over these if neccessary, or specify a list # TODO
-drv <- dbDriver("PostgreSQL");
-con <- dbConnect(drv, host=dbhost, port=dbport, dbname=dbname, user=dbuser, password=dbpass);
-dbGetInfo(con);
-
+makeDBConnection <- function()
+{
+    #tables <- dbListTables(con); # can iterate over these as alt. to tablenames, or specify a list # TODO
+    drv <- dbDriver("PostgreSQL");
+    con <<- dbConnect(drv, host=dbhost, port=dbport, dbname=dbname, user=dbuser, password=dbpass);
+    dbGetInfo(con);
+}
 
 #------------------------------------------------------------------------
 # get a table from PRW with for a given SQL query
 # returns: a dataframe with all results returned
+# ARG1 sql.query: the SQL statement to select the PR table
+# ARG2 date2char: convert POSIXct dates columns to character class, default=TRUE
+# ARG3 close.con should the connection be closed after running? default=FALSE
+# RETURN: dataframe of PR table
 #------------------------------------------------------------------------
-getTable <- function(sql.query="", close.con=FALSE)
+getTable <- function(sql.query="", date2char=TRUE, close.con=FALSE)
 {
     #for the time being just select specific ones:
     rs <- dbSendQuery(con,sql.query);
     table <- fetch(rs, n=-1); #always return full result set 
+
+    #convert POSIXct to char if req. 
+    if(date2char==TRUE)
+    {
+        posixct.cols <- (sapply(sapply(table, class), "[", 1)) %in% "POSIXct"
+        table[posixct.cols] <-lapply(table[posixct.cols], as.character)
+        table <- as.data.frame(table, stringsAsFactors=FALSE)
+
+    }else
+    {
+        table <- as.data.frame(table, stringsAsFactors=FALSE)
+    }
+
 
     #close db connection after query?
     if(close.con == TRUE)
@@ -74,34 +117,41 @@ getTable <- function(sql.query="", close.con=FALSE)
 # Read a set of tables from PRW from a given time range.
 # returns: list of dataframes (each table in tablenames) with records 
 # from time range
+# ARG1 tablenames: a list or character vector of PR tablenames
+# ARG2 time.range: specify the range of timestamps which to select rows
+#                  a numeric vector: c(from) to latest implied,
+#                  or c(from, to), if null then default to all rows
+# EXAMPLE:
+# initArgs()
+# makeDBConnection()
+#e.g. myTables <- getTables(tablenames)
 #------------------------------------------------------------------------
-getTables <- function(tablenames, time.range="all.time")
+#getTables <- function(tablenames, time.range="all.time")
+getTables <- function(tablenames, time.range=NULL)
 {
     tables <- list();
     for(i in tablenames)
     {
         sql.query <- "";
         
-        if(time.range=="all.time")
+        if(is.null(time.range))
         {
             #default: return all records in table
             sql.query <- paste('SELECT * FROM "', i, '"', sep="");
         }
 
-        if(time.range=="from.last")
+        if(length(time.range)==1)
         {
             #only specify start time, i.e. get everything from the startime on...
             sql.query <- paste('SELECT * FROM "', i, '" WHERE timestamp >= ', startpoint,'', sep="");
         }
 
-        if(time.range=="from.to")
+        if(length(time.range)==2) #from-to
         {
             #build sql query
             sql.query <- paste('SELECT * FROM "', i, '" WHERE timestamp >= ', startpoint, ' AND timestamp <= ', endpoint, '', sep="");
             
         }
-
-
 
         #if (i == tablenames[length(tablenames)]) #on the last table close
         #{
@@ -114,9 +164,10 @@ getTables <- function(tablenames, time.range="all.time")
     return(tables);
 }
 
-#e.g.# myTables <- getTables(tablenames, time.range="from.last")
 
 
+
+#(re below: I've moved a fix for this, you can optionally specify date2char in getTable() )
 # The data coming out is getting eventDateTime and insertDateTime listed as POSIXct, this can be fished out and stringified if necessary
 # as R can whinge a bit about POSIX types in dataframes
 # so
