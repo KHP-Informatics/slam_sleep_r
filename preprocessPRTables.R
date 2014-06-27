@@ -49,10 +49,10 @@ add.timestamp.date <- function(table)
 add.split.date <- function(table)
 {
     table$"event_Date" <- sapply(strsplit(table$timestamp_datetime, "[ :]"), "[", 1)
-    table$"event_Hour" <- sapply(strsplit(table$timestamp_datetime, "[ :]"), "[", 2) 
-    table$"event_Min" <- sapply(strsplit(table$timestamp_datetime, "[ :]"), "[", 3) 
-    table$"event_Sec" <- sapply(strsplit(table$timestamp_datetime, "[ :]"), "[", 4) 
-    table$"midnight_Hour"[table$event_Hour == "00"] <- table$timestamp[table$event_Hour == "00"]
+    table$"event_Hour" <- as.numeric(sapply(strsplit(table$timestamp_datetime, "[ :]"), "[", 2) )
+    table$"event_Min" <- as.numeric(sapply(strsplit(table$timestamp_datetime, "[ :]"), "[", 3) )
+    table$"event_Sec" <- as.numeric(sapply(strsplit(table$timestamp_datetime, "[ :]"), "[", 4) )
+    table$"midnight_Hour"[table$event_Hour == 00] <- table$timestamp[table$event_Hour == 00]
 
     return(table)
 }
@@ -96,12 +96,13 @@ interp.data <- function(table, cols=NULL)
         warning("WARNING: column with <2 real values detected! Ignoring them for interpolation")
     }
 
-    #interpolate 
-    dz <- zoo(table)
+    #interpolate numeric data cols
+    num.cols <- sapply(table, class) %in% "numeric"
+    dz <- zoo(table[, num.cols])
     index(dz) <- dz[, 1]
     dz <- na.approx(dz)
-
-    return(as.data.frame(dz, stringsAsFactors=FALSE))
+    return(cbind(as.data.frame(dz, stringsAsFactors=FALSE), table[,!num.cols] ))
+    
 }
 
 
@@ -160,7 +161,7 @@ preprocess.tables <- function(table1, table2, interp.on.columns)
 
 #2) merge and interpolate FitBitApiFeature, LocationProbe, tables:
 #e.g. ** currently not all the talbes will pass the interpolation step, prob. want to subset out the cols that very sparsely populated.
-# cols <- c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES", "SEDENTARY_MINUTES", "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "SLEEP_MEASUREMENTS_DT_DURATION", "event_Hour.y")
+# cols <- c("timestamp", "LATITUDE", "ACCURACY", "SPEED", "LIGHTLY_ACTIVE_MINUTES", "FAIRLY_ACTIVE_MINUTES", "SEDENTARY_MINUTES", "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "SLEEP_MEASUREMENTS_DT_DURATION", "event_Hour.y")
 # active.data <- preprocess.tables(myTables$FitBitApiFeature, myTables$LocationProbe, cols)
 
 
