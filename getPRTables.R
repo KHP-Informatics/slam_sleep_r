@@ -4,8 +4,6 @@
 # -- Email: amosfolarin@gmail.com                                       #
 #########################################################################
 
-#USAGE:
-# RScript getPRTables.R db2.cbits.northwestern.edu 5432 prw_database prw_usrname prw_passwoed 1397085335 1398326606 FitBitApiFeature LocationProbe  
 
 #------------------------------------------------------------------------
 # Interface with the Purple Robot Warehouse (PRW) database for R
@@ -115,15 +113,16 @@ getTable <- function(sql.query="", date2char=TRUE, close.con=FALSE)
 
 #------------------------------------------------------------------------
 # Read a set of tables from PRW from a given time range.
-# returns: list of dataframes (each table in tablenames) with records 
 # from time range
 # ARG1 tablenames: a list or character vector of PR tablenames
 # ARG2 time.range: specify the range of timestamps which to select rows
 #                  a numeric vector: c(from) to latest implied,
 #                  or c(from, to), if null then default to all rows
+# RETURN: a list of dataframes (each table in tablenames) with records 
 # EXAMPLE:
 # initArgs()
 # makeDBConnection()
+# dbListTables(con) #show available tables
 # myTables <- getTables(tablenames)
 #------------------------------------------------------------------------
 #getTables <- function(tablenames, time.range="all.time")

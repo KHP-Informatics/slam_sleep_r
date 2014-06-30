@@ -11,8 +11,8 @@
 #########################################################################
 
 #source some stuff. 
-#source("/home/afolarinbrc/workspace/git_projects/slam_sleep_r/getPRTables.R")
-#source("/home/afolarinbrc/workspace/git_projects/slam_sleep_r/preprocessPRTables.R")
+source("/home/afolarinbrc/workspace/git_projects/slam_sleep_r/getPRTables.R")
+source("/home/afolarinbrc/workspace/git_projects/slam_sleep_r/preprocessPRTables.R")
 source("/home/afolarinbrc/workspace/git_projects/slam_sleep_r/prPlotting.R")
 source("/home/afolarinbrc/workspace/git_projects/slam_sleep_r/sleepClass.R")
 
@@ -70,6 +70,10 @@ isect_sn <- merged_sn[nn.range_sn[1]:nn.range_sn[2], ]
 # 1)  Add Sleep-Wake binary var
 isect_af$"SleepWake" <- binSleepDuration(isect_af)
 isect_sn$"SleepWake" <- binSleepDuration(isect_sn)
+
+# see plots, for sleep-wake: sn_fb-loc_sleep-dura.jpg, af_fb-loc_sleep-dura.jpg
+# quite a few days where fitbit was not registered in sleep/wake mode
+# so need to cleanup
 
 
 
