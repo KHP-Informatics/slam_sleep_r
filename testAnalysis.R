@@ -37,10 +37,12 @@ getStartEndRows <- function(d, column.name)
 #------------------------------------------------------------------------
 setwd("/scratch/Datasets/purple_robot_data/pr_test_data")
 
-for(i in dir())
+for(i in dir(pattern="*.RData"))
 { load(i)}
 
 ls()
+
+
 
 
 #------------------------------------------------------------------------
@@ -67,15 +69,37 @@ isect_sn <- merged_sn[nn.range_sn[1]:nn.range_sn[2], ]
 #------------------------------------------------------------------------
 # Extra prep for classification 
 #------------------------------------------------------------------------
-# 1)  Add Sleep-Wake binary var
+# 1) Add merged Event_Hour.x Event_Hour.y 
+t1 <- isect_af$event_Hour.x
+t2 <- isect_af$event_Hour.y
+t1[is.na(isect_af$event_Hour.x)] <- t2[is.na(isect_af$event_Hour.x)]
+isect_af$"event_Hour" <- t1
+
+t1 <- isect_sn$event_Hour.x
+t2 <- isect_sn$event_Hour.y
+t1[is.na(isect_sn$event_Hour.x)] <- t2[is.na(isect_sn$event_Hour.x)]
+isect_sn$"event_Hour" <- t1
+
+
+# 2)  Add Sleep-Wake binary var
 isect_af$"SleepWake" <- binSleepDuration(isect_af)
 isect_sn$"SleepWake" <- binSleepDuration(isect_sn)
+
 
 # see plots, for sleep-wake: sn_fb-loc_sleep-dura.jpg, af_fb-loc_sleep-dura.jpg
 # quite a few days where fitbit was not registered in sleep/wake mode
 # so need to cleanup
-
-
+x11(); plot(isect_af$timestamp, isect_af$SLEEP_MEASUREMENTS_DT_DURATION)
+x11(); plot(isect_af$timestamp, isect_af$SleepWake)
+x11(); plot(isect_af$event_Hour, isect_af$SLEEP_MEASUREMENTS_DT_DURATION)
+x11(); plot(isect_af$event_Hour, isect_af$SleepWake)
+#dump timepoints which look bad?
+bad.sw.1 <- isect_af$SleepWake == 1 & (isect_af$event_Hour> 0 & isect_af$event_Hour < 7)
+x11(); plot(isect_af$timestamp[!bad.sw.1], isect_af$SleepWake[!bad.sw.1], main="bad.sw.1")
+bad.sw.0 <- isect_af$SleepWake == 0 & (isect_af$event_Hour> 8  & isect_af$event_Hour < 20)
+x11(); plot(isect_af$timestamp[!bad.sw.0], isect_af$SleepWake[!bad.sw.0], main="bad.sw.0")
+bad.sw.0.1 <- bad.sw.0 | bad.sw.1
+x11(); plot(isect_af$timestamp[!bad.sw.0.1], isect_af$SleepWake[!bad.sw.0.1], main="bad.sw.0.1")
 
 #------------------------------------------------------------------------
 #  
