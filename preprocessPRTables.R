@@ -77,8 +77,9 @@ merge.tables.on.time <- function(table1, table2)
 # NB! interpolation will error out if there are not at least 2 non-NA values to interpolate in the column, 
 # TODO can automate dropping of columns matching this criteria, then could interp everything, but for now just select columns of interest.
 # ARG1 table: dataframe PR table
-# ARG2 cols.of.interest: - a set of columns to return
-# ARG3 interp.on.cols: -  set of columns of interest (subset of columns.of.interest), defaults to columns which with values that are not all 
+# ARG2 cols.of.interest: - a set of columns to return (included because we do not always want all the data columns, especially date columns which are numeric type and so would normally get interpolated)
+# ARG3 interp.on.cols: -  set of columns to interpolate (subset of columns.of.interest), defaults to columns which with values that are not all 
+# RETURN dataframe: interpolated on the numeric colums of the interp.on.cols (in the column order of the cols.of.interest)
 #------------------------------------------------------------------------
 interp.data <- function(table, cols.of.interest=NULL, interp.on.cols=NULL)
 {
@@ -119,10 +120,46 @@ interp.data <- function(table, cols.of.interest=NULL, interp.on.cols=NULL)
     dz <- zoo(table[, interp.num.cols])
     index(dz) <- dz[, "timestamp"]
     dz <- na.approx(dz)
-    #reasemble
-    return(cbind(as.data.frame(dz, stringsAsFactors=FALSE), table[,!interp.num.cols] ))
+    #reasemble interpolated cols and non-interpolated cols into a dataframe and reorder cols back to cols.of.interest order
+    return( cbind(as.data.frame(dz, stringsAsFactors=FALSE), table[,!interp.num.cols])[cols.of.interest] )
     
 }
+
+
+#------------------------------------------------------------------------
+# Interpolate the parsed data to estimate missing values
+# NB! interpolation will warn if there are not at least 2 non-NA values to interpolate in the column, 
+# ARG1 table: dataframe PR table
+# ARG2 interp.on.cols: set of columns to interpolate (must include "timestamp" column),
+#                       defaults to columns which have at least 2 non-NA values. 
+#                       NOTE: you may want to leave the Date_Hour.x|y out for example as these 
+#                       would normally get interpolated, and as they are complimentary there 
+#                       are better ways to fill the NAs.
+# RETURN dataframe: interpolated on the numeric colums of the interp.on.cols (in the column order of the columns of table)
+#------------------------------------------------------------------------
+interp.data <- function(table, cols.of.interest=NULL, interp.on.cols=NULL)
+{
+
+    #define the interpolation cols
+    if(is.null(interp.on.cols))
+    { 
+        # only merge columns where there is at least 2 real values, and generate warning
+        interp.on.cols <- apply(table, 2, function(x){ sum(is.na(x)) >= length(x)-2 } )
+        #table <- table[, interpable.cols]
+        message("WARNING: Column with <2 real values detected! Ignoring them for interpolation")
+    }
+    
+    interp.b <- colnames(table) %in% interp.on.cols  #which cols of table are marked for interpolation
+    numeric.b <- sapply(table, class) %in% "numeric"  #which cols of table are numeric
+    interp.num.cols <- interp.b & numeric.b  #intersect of interpolate and numeric cols
+    dz <- zoo(table[, interp.num.cols])
+    index(dz) <- dz[, "timestamp"]
+    dz <- na.approx(dz)
+    #reasemble interpolated cols and non-interpolated cols into a dataframe and reorder cols back to interp.on.cols order
+    return( cbind(as.data.frame(dz, stringsAsFactors=FALSE), table[,!interp.num.cols])[colnames(table)] )
+    
+}
+
 
 
 
@@ -140,14 +177,14 @@ noise.filter <- function(table)
 
 
 #------------------------------------------------------------------------
-# Preprocess two tables: sort, add time cols, join, join, interpolate 
+# Sample preprocessing pipeline, two tables, sort, add time cols, join, join, interpolate 
 # ARG1 table1: - 1st PR table to merge
 # ARG2 table2: - 2nd PR table to merge
-# ARG3 columns.of.interest: - a set of columns to return
-# ARG4 interp.on.columns: - vector of column names to interpolate on (optional, default=all cols) 
+# ARG3 columns.of.interest (optoinal): - a set of columns to return
+# ARG4 interp.on.columns: - vector of column names to interpolate on (optional, default=all cols)  see interp.data func.
 #------------------------------------------------------------------------
 
-preprocess.tables <- function(table1, table2, columns.of.interest, interp.on.columns)
+preprocess.tables <- function(table1, table2, columns.of.interest=NULL, interp.on.columns)
 {
 
     table1 <- order.by.timestamp(table1)
@@ -158,13 +195,16 @@ preprocess.tables <- function(table1, table2, columns.of.interest, interp.on.col
     table2 <- add.split.date(table2)
     tables.m <- merge.tables.on.time(table1, table2)
     tables.mi <- NULL
-    if(! is.null(interp.on.columns))
+   
+    if(!is.null(columns.of.interest))
     {
-        tables.mi <- interp.data(tables.m, columns.of.interest, interp.on.columns)
+        #first subset with the columns.of.interest if given
+        table.mi <- interp.data2(table.m[columns.of.interest], interp.on.columns)
     }else
     {
-        tables.mi <- interp.data(tables.m)
+        table.mi <- interp.data2(table.m, interp.on.columns)
     }
+
     #    tables.mif <- noise.filter(tables.mi)  #TODO
     return(tables.mi)
 }
