@@ -101,9 +101,32 @@ x11(); plot(isect_af$timestamp[!bad.sw.0], isect_af$SleepWake[!bad.sw.0], main="
 bad.sw.0.1 <- bad.sw.0 | bad.sw.1
 x11(); plot(isect_af$timestamp[!bad.sw.0.1], isect_af$SleepWake[!bad.sw.0.1], main="bad.sw.0.1")
 
+#cleaned
+data.af <- isect_af[!bad.sw.0.1, ]
+data.sn <- isect_sn[!bad.sw.0.1, ]
+
+
 #------------------------------------------------------------------------
-#  
+# Naieve Bayes Classifier  
 #------------------------------------------------------------------------
+#---try with the caret package
+    require("klaR")
+    require("caret")
+
+    #x <- di.k2[, c("LATITUDE", "LIGHTLY_ACTIVE_MINUTES")]
+    x <- data.af[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES", "SEDENTARY_MINUTES", "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "event_Hour.y")]
+    y <- factor(data.af$"SLEEP_MEASUREMENTS_DT_DURATION") #must be a factor not dataframe
+
+    classifier2 <- train(x,y,'nb', trControl=trainControl(method='cv', number=10))
+    pred2 <- predict(classifier2$finalModel, x)$class
+    table(y, pred2, dnn=list('actual', 'predicted'))
+
+    #look at the training and predicted vals
+    tmp <- cbind(unclass(y), unclass(pred2))
+    rownames(tmp) <- rownames(di.k2)
+    x11();plot(rownames(tmp), tmp[,1])
+    lines(rownames(tmp), tmp[,2], pch=5, col="green")
+
 
 
 #------------------------------------------------------------------------
