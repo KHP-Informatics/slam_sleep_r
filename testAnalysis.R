@@ -35,7 +35,7 @@ getStartEndRows <- function(d, column.name)
 #------------------------------------------------------------------------
 # Load the data tables from getPRTables.R and preprocessPRTables.R
 #------------------------------------------------------------------------
-setwd("/scratch/Datasets/purple_robot_data/pr_test_data")
+setwd("/home/afolarinbrc/pr_test_data")
 
 for(i in dir(pattern="*.RData"))
 { load(i)}
@@ -89,17 +89,17 @@ isect_sn$"SleepWake" <- binSleepDuration(isect_sn)
 # see plots, for sleep-wake: sn_fb-loc_sleep-dura.jpg, af_fb-loc_sleep-dura.jpg
 # quite a few days where fitbit was not registered in sleep/wake mode
 # so need to cleanup
-x11(); plot(isect_af$timestamp, isect_af$SLEEP_MEASUREMENTS_DT_DURATION)
-x11(); plot(isect_af$timestamp, isect_af$SleepWake)
-x11(); plot(isect_af$event_Hour, isect_af$SLEEP_MEASUREMENTS_DT_DURATION)
-x11(); plot(isect_af$event_Hour, isect_af$SleepWake)
+#x11(); plot(isect_af$timestamp, isect_af$SLEEP_MEASUREMENTS_DT_DURATION)
+#x11(); plot(isect_af$timestamp, isect_af$SleepWake)
+#x11(); plot(isect_af$event_Hour, isect_af$SLEEP_MEASUREMENTS_DT_DURATION)
+#x11(); plot(isect_af$event_Hour, isect_af$SleepWake)
 #dump timepoints which look bad?
 bad.sw.1 <- isect_af$SleepWake == 1 & (isect_af$event_Hour> 0 & isect_af$event_Hour < 7)
-x11(); plot(isect_af$timestamp[!bad.sw.1], isect_af$SleepWake[!bad.sw.1], main="bad.sw.1")
+#x11(); plot(isect_af$timestamp[!bad.sw.1], isect_af$SleepWake[!bad.sw.1], main="bad.sw.1")
 bad.sw.0 <- isect_af$SleepWake == 0 & (isect_af$event_Hour> 8  & isect_af$event_Hour < 20)
-x11(); plot(isect_af$timestamp[!bad.sw.0], isect_af$SleepWake[!bad.sw.0], main="bad.sw.0")
+#x11(); plot(isect_af$timestamp[!bad.sw.0], isect_af$SleepWake[!bad.sw.0], main="bad.sw.0")
 bad.sw.0.1 <- bad.sw.0 | bad.sw.1
-x11(); plot(isect_af$timestamp[!bad.sw.0.1], isect_af$SleepWake[!bad.sw.0.1], main="bad.sw.0.1")
+#x11(); plot(isect_af$timestamp[!bad.sw.0.1], isect_af$SleepWake[!bad.sw.0.1], main="bad.sw.0.1")
 
 #cleaned
 data.af <- isect_af[!bad.sw.0.1, ]
@@ -109,15 +109,16 @@ data.sn <- isect_sn[!bad.sw.0.1, ]
 #------------------------------------------------------------------------
 # Naieve Bayes Classifier  
 #------------------------------------------------------------------------
-#---try with the caret package
-    require("klaR")
-    require("caret")
+require("klaR")
+require("caret")
 
+
+#---try with the caret package  ## Takes a looooong time!!!
     #x <- di.k2[, c("LATITUDE", "LIGHTLY_ACTIVE_MINUTES")]
     x <- data.af[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES", "SEDENTARY_MINUTES", "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "event_Hour.y")]
     y <- factor(data.af$"SLEEP_MEASUREMENTS_DT_DURATION") #must be a factor not dataframe
 
-    classifier2 <- train(x,y,'nb', trControl=trainControl(method='cv', number=10))
+    classifier2 <- train(x,y,'nb', trControl=trainControl(method='cv', number=10))  # Takes a looooong time!
     pred2 <- predict(classifier2$finalModel, x)$class
     table(y, pred2, dnn=list('actual', 'predicted'))
 
@@ -127,6 +128,15 @@ data.sn <- isect_sn[!bad.sw.0.1, ]
     x11();plot(rownames(tmp), tmp[,1])
     lines(rownames(tmp), tmp[,2], pch=5, col="green")
 
+
+#---try with the caret package  ## try a quick version with less data, might be quicker!
+    sub.r <- sample(1:nrow(x), 5000)
+    x <- x[sub.r, ]   #get a subset of x, 5000 rows.
+    y <- y[sub.r]
+
+    classifier2 <- train(x,y,'nb', trControl=trainControl(method='cv', number=10))  
+    pred2 <- predict(classifier2$finalModel, x)$class
+    table(y, pred2, dnn=list('actual', 'predicted'))
 
 
 #------------------------------------------------------------------------
