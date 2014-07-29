@@ -1,0 +1,5 @@
+A naieve bayese classifier
+random sample size 5000
+data: data.af
+x = predictors
+y = class (SleepWake)

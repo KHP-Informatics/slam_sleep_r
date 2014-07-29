@@ -100,9 +100,21 @@ bad.sw.0 <- isect_af$SleepWake == 0 & (isect_af$event_Hour> 8  & isect_af$event_
 #x11(); plot(isect_af$timestamp[!bad.sw.0], isect_af$SleepWake[!bad.sw.0], main="bad.sw.0")
 bad.sw.0.1 <- bad.sw.0 | bad.sw.1
 #x11(); plot(isect_af$timestamp[!bad.sw.0.1], isect_af$SleepWake[!bad.sw.0.1], main="bad.sw.0.1")
-
 #cleaned
 data.af <- isect_af[!bad.sw.0.1, ]
+
+#x11(); plot(isect_sn$timestamp, isect_sn$SLEEP_MEASUREMENTS_DT_DURATION)
+#x11(); plot(isect_sn$timestamp, isect_sn$SleepWake)
+#x11(); plot(isect_sn$event_Hour, isect_sn$SLEEP_MEASUREMENTS_DT_DURATION)
+#x11(); plot(isect_sn$event_Hour, isect_sn$SleepWake)
+#dump timepoints which look bad?
+bad.sw.1 <- isect_sn$SleepWake == 1 & (isect_sn$event_Hour> 0 & isect_sn$event_Hour < 7)
+#x11(); plot(isect_sn$timestamp[!bad.sw.1], isect_sn$SleepWake[!bad.sw.1], main="bad.sw.1")
+bad.sw.0 <- isect_sn$SleepWake == 0 & (isect_sn$event_Hour> 8  & isect_sn$event_Hour < 20)
+#x11(); plot(isect_sn$timestamp[!bad.sw.0], isect_sn$SleepWake[!bad.sw.0], main="bad.sw.0")
+bad.sw.0.1 <- bad.sw.0 | bad.sw.1
+#x11(); plot(isect_sn$timestamp[!bad.sw.0.1], isect_sn$SleepWake[!bad.sw.0.1], main="bad.sw.0.1")
+#cleaned
 data.sn <- isect_sn[!bad.sw.0.1, ]
 
 
@@ -115,13 +127,21 @@ require("caret")
 
 #---try with the caret package  ## Takes a looooong time!!!
     #x <- di.k2[, c("LATITUDE", "LIGHTLY_ACTIVE_MINUTES")]
-    x <- data.af[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES", "SEDENTARY_MINUTES", "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "event_Hour.y")]
+    x <- data.af[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES", "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "event_Hour")]
     y <- factor(data.af$"SLEEP_MEASUREMENTS_DT_DURATION") #must be a factor not dataframe
 
     classifier2 <- train(x,y,'nb', trControl=trainControl(method='cv', number=10))  # Takes a looooong time!
+    classifier2
     pred2 <- predict(classifier2$finalModel, x)$class
     table(y, pred2, dnn=list('actual', 'predicted'))
 
+#---try with the caret package  ## Takes a looooong time!!!
+    #x <- di.k2[, c("LATITUDE", "LIGHTLY_ACTIVE_MINUTES")]
+    x <- data.af[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES",  "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "event_Hour")]
+    y <- factor(data.af$"SleepWake") #must be a factor not dataframe
+    classifier2 <- train(x,y,'nb', trControl=trainControl(method='cv', number=10))  # Takes a looooong time!
+    pred2 <- predict(classifier2$finalModel, x)$class
+    table(y, pred2, dnn=list('actual', 'predicted'))
     #look at the training and predicted vals
     tmp <- cbind(unclass(y), unclass(pred2))
     rownames(tmp) <- rownames(di.k2)
@@ -129,19 +149,154 @@ require("caret")
     lines(rownames(tmp), tmp[,2], pch=5, col="green")
 
 
-#---try with the caret package  ## try a quick version with less data, might be quicker!
-    sub.r <- sample(1:nrow(x), 5000)
-    x <- x[sub.r, ]   #get a subset of x, 5000 rows.
-    y <- y[sub.r]
 
+#---try with the caret package  ## n=5000 try a quick version with less data
+    sub.r <- sample(1:nrow(data.af), 5000)
+    x <- data.af[sub.r, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES",  "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "event_Hour")]
+#    x <- x[sub.r, c("LATITUDE", "LIGHTLY_ACTIVE_MINUTES")]   #get a subset of x, 5000 rows.
+    y <- factor(data.af$SleepWake)
+    y <- y[sub.r]
     classifier2 <- train(x,y,'nb', trControl=trainControl(method='cv', number=10))  
     pred2 <- predict(classifier2$finalModel, x)$class
     table(y, pred2, dnn=list('actual', 'predicted'))
+   #look at the training and predicted vals
+    tmp <- cbind(unclass(y), unclass(pred2))
+    rownames(tmp) <- rownames(data.af[sub.r,])
+    tmp <- tmp[sort(rownames(tmp)), ]
+    x11(); plot(rownames(tmp), tmp[,1])
+    lines(rownames(tmp), tmp[,2], pch=5, col="green")
+
+    # now try classifying all data.af, using the classifier produced from the 5000 rnd sample subset of the data
+    x.all <- data.af[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES",  "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "event_Hour")]
+    y.all <- factor(data.af$SleepWake)
+    pred2 <- predict(classifier2$finalModel, x.all)$class
+    table(y.all, pred2, dnn=list('actual', 'predicted'))
+    #look at the training and predicted vals
+    tmp <- cbind(unclass(y.all), unclass(pred2))
+    rownames(tmp) <- rownames(data.af)
+    x11();plot(rownames(tmp), tmp[,1])
+    lines(rownames(tmp), tmp[,2], pch=5, col="green")
+
+    # now try classifying all data.sn, using the classifier produced from the 5000 rnd sample subset of the data
+    x.all <- data.sn[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES",  "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "event_Hour")]
+    y.all <- factor(data.sn$SleepWake)
+    pred2 <- predict(classifier2$finalModel, x.all)$class
+    table(y.all, pred2, dnn=list('actual', 'predicted'))
+    #look at the training and predicted vals
+    tmp <- cbind(unclass(y.all), unclass(pred2))
+    rownames(tmp) <- rownames(data.sn)
+    x11();plot(rownames(tmp), tmp[,1])
+    lines(rownames(tmp), tmp[,2], pch=5, col="green")
+
+
+#---try with the caret package  ## n=10,000 try a quick version with less data
+    sub.r <- sample(1:nrow(data.af), 10000)
+    x <- data.af[sub.r, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES", "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "event_Hour")]
+#    x <- x[sub.r, c("LATITUDE", "LIGHTLY_ACTIVE_MINUTES")]   #get a subset of x, 5000 rows.
+    y <- factor(data.af$SleepWake)
+    y <- y[sub.r]
+    classifier2 <- train(x,y,'nb', trControl=trainControl(method='cv', number=10))  
+    pred2 <- predict(classifier2$finalModel, x)$class
+    table(y, pred2, dnn=list('actual', 'predicted'))
+   #look at the training and predicted vals
+    tmp <- cbind(unclass(y), unclass(pred2))
+    rownames(tmp) <- rownames(data.af[sub.r,])
+    tmp <- tmp[sort(rownames(tmp)), ]
+    x11();plot(rownames(tmp), tmp[,1])
+    lines(rownames(tmp), tmp[,2], pch=5, col="green")
+
+    # now try classifying all data.af, using the classifier produced from the 10000 rnd sample subset of the data
+    x.all <- data.af[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES",  "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "event_Hour")]
+    y.all <- factor(data.af$SleepWake)
+    pred2 <- predict(classifier2$finalModel, x.all)$class
+    table(y.all, pred2, dnn=list('actual', 'predicted'))
+    #look at the training and predicted vals
+    tmp <- cbind(unclass(y.all), unclass(pred2))
+    rownames(tmp) <- rownames(data.af)
+    x11();plot(rownames(tmp), tmp[,1])
+    lines(rownames(tmp), tmp[,2], pch=5, col="green")
+
+    # now try classifying all data.sn, using the classifier produced from the 10000 rnd sample subset of the data
+    x.all <- data.sn[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES",  "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "event_Hour")]
+    y.all <- factor(data.sn$SleepWake)
+    pred2 <- predict(classifier2$finalModel, x.all)$class
+    table(y.all, pred2, dnn=list('actual', 'predicted'))
+    #look at the training and predicted vals
+    tmp <- cbind(unclass(y.all), unclass(pred2))
+    rownames(tmp) <- rownames(data.sn)
+    x11();plot(rownames(tmp), tmp[,1])
+    lines(rownames(tmp), tmp[,2], pch=5, col="green")
+
+
+#no build a classifier with steves data, does this improve things or is the dataset bad??
+#  now try classifying all data.sn, using the classifier produced from the 10000 rnd sample subset of the data
+#---try with the caret package  ## n=10,000 try a quick version with less data
+    sub.r <- sample(1:nrow(data.sn), 2000)
+    x <- data.sn[sub.r, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES", "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "event_Hour")]
+#    x <- x[sub.r, c("LATITUDE", "LIGHTLY_ACTIVE_MINUTES")]   #get a subset of x, 5000 rows.
+    y <- factor(data.sn$SleepWake)
+    y <- y[sub.r]
+    classifier.sn <- train(x,y,'nb', trControl=trainControl(method='cv', number=10))
+    pred2 <- predict(classifier.sn$finalModel, x)$class
+    table(y, pred2, dnn=list('actual', 'predicted'))
+
+
+    x.all <- data.sn[, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES",  "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "event_Hour")]
+    y.all <- factor(data.sn$SleepWake)
+    pred2 <- predict(classifier.sn$finalModel, x.all)$class
+    table(y.all, pred2, dnn=list('actual', 'predicted'))
+    #look at the training and predicted vals
+    tmp <- cbind(unclass(y.all), unclass(pred2))
+    rownames(tmp) <- rownames(data.sn)
+    x11();plot(rownames(tmp), tmp[,1])
+    lines(rownames(tmp), tmp[,2], pch=5, col="green")
+    
+
+
+##--- actually looks like latitude should be a delta-latitude, esp for generalizaing the classifier
+    sub.r <- sample(1:nrow(data.af), 10000)
+    x <- data.af[sub.r, c("timestamp", "LATITUDE", "LIGHTLY_ACTIVE_MINUTES", "ACCURACY", "SPEED", "FAIRLY_ACTIVE_MINUTES", "SEDENTARY_MINUTES", "VERY_ACTIVE_MINUTES", "VERY_ACTIVE_MINUTES", "event_Hour")]
+    d <- cbind(0, x$LATITUDE[-length(x$LATITUDE)])
+    x$LATITUDE <- x - d
+    y <- factor(data.af$SleepWake)
+    y <- y[sub.r]
+    classifier2 <- train(x,y,'nb', trControl=trainControl(method='cv', number=10))
+    pred2 <- predict(classifier2$finalModel, x)$class
+    table(y, pred2, dnn=list('actual', 'predicted'))
+    #look at the training and predicted vals
+    tmp <- cbind(unclass(y), unclass(pred2))
+    rownames(tmp) <- rownames(data.af[sub.r,])
+    tmp <- tmp[sort(rownames(tmp)), ]
+    x11();plot(rownames(tmp), tmp[,1])
+    lines(rownames(tmp), tmp[,2], pch=5, col="green"
+
 
 
 #------------------------------------------------------------------------
-# 
+# Figs: showing some of the data vars in quick plot 
 #------------------------------------------------------------------------
+opar <- par(no.readonly=T)
+x11(width=19, height=10.5, pointsize=8)
+par(mfrow=c(7,1), mar=c(2,2,2,1))
+tmp <- data.af[20000:40000, ]
+tmp$LATITUDE <- (log(tmp$LATITUDE))
+#tmp <- data.af[12000:19000, ]
+plot(tmp$timestamp, tmp$"SleepWake", xaxt='n', ann=FALSE)
+plot(tmp$timestamp, tmp$"SEDENTARY_MINUTES", xaxt='n', ann=FALSE)
+plot(tmp$timestamp, tmp$"LIGHTLY_ACTIVE_MINUTES", xaxt='n', ann=FALSE)
+plot(tmp$timestamp, tmp$"FAIRLY_ACTIVE_MINUTES", xaxt='n', ann=FALSE)
+plot(tmp$timestamp, tmp$"VERY_ACTIVE_MINUTES", xaxt='n', ann=FALSE)
+plot(tmp$timestamp, tmp$"LATITUDE", xaxt='n', ann=FALSE)
+plot(tmp$timestamp, tmp$"SPEED")
+par(opar)
+
+
+# plot a heatmap of the data
+require("gplots")
+sub.r <- sample(1:nrow(data.af), 10000)
+d <- as.matrix(data.af[!colnames(data.af) %in% c("event_Date", "timestamp")])
+x11(width=19, height=10.5); heatmap.2(d[sub.r, ], scale=c("column"))
+x11(width=19, height=10.5); heatmap.2(d[sub.r, ])
 
 
 #------------------------------------------------------------------------
