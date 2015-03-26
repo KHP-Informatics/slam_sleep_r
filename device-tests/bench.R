@@ -89,7 +89,8 @@ plot(unlist(fb.xt[from:to, "FAIRLY_ACTIVE_MINUTES"]), xaxt="n")
 plot(unlist(fb.xt[from:to, "VERY_ACTIVE_MINUTES"]), xaxt="n")
 plot(unlist(fb.xt[from:to, "SLEEP_MEASUREMENTS"]), xaxt="n")
 
-
+#plot the diff 
+plot(diff(unlist(fb.xt[, "LIGHTLY_ACTIVE_MINUTES"])), log="y")
 
 
 #todo 
