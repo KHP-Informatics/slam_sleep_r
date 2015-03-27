@@ -47,7 +47,8 @@ fb.xt <- cbind(fb[, -4], fb.xt)
 rownames(fb.xt) <- 1:nrow(fb.xt) #remove large json str. rowname as obstructive to viewing
 #add a column which is the converted timestamp values into datetime
 fb.xt$"timestamp.datetime" <- as.character(as.POSIXct(unlist(fb.xt[, "TIMESTAMP"]), origin="1970-01-01"))
-
+#add integrated active minutes modes
+fb.xt$"SUMMED_ACTIVE_MINUTES" <- as.list(unlist(fb.xt[, "LIGHTLY_ACTIVE_MINUTES"]) + unlist(fb.xt[, "FAIRLY_ACTIVE_MINUTES"]) + unlist(fb.xt[, "VERY_ACTIVE_MINUTES"]))
 
 #plot
 plot(unlist(fb.xt[, "LIGHTLY_ACTIVE_MINUTES"]))
@@ -88,9 +89,15 @@ plot(unlist(fb.xt[from:to, "LIGHTLY_ACTIVE_MINUTES"]), xaxt="n")
 plot(unlist(fb.xt[from:to, "FAIRLY_ACTIVE_MINUTES"]), xaxt="n")
 plot(unlist(fb.xt[from:to, "VERY_ACTIVE_MINUTES"]), xaxt="n")
 plot(unlist(fb.xt[from:to, "SLEEP_MEASUREMENTS"]), xaxt="n")
+plot(unlist(fb.xt[from:to, "SEDENTARY_RATIO"]), xaxt="n")
 
 #plot the diff 
-plot(diff(unlist(fb.xt[, "LIGHTLY_ACTIVE_MINUTES"])), log="y")
+par(mfrow=c(5,1))
+plot(ga.accel.z[from:length(ga.accel.z)], xaxt="n")
+plot(diff(unlist(fb.xt[, "LIGHTLY_ACTIVE_MINUTES"])), log="y") #the diff
+plot(unlist(fb.xt[from:to, "LIGHTLY_ACTIVE_RATIO"]), xaxt="n")
+plot(unlist(fb.xt[from:to, "LIGHTLY_ACTIVE_MINUTES"]), xaxt="n")
+plot(unlist(fb.xt[from:to, "SUMMED_ACTIVE_MINUTES"]), xaxt="n")
 
 
 #todo 

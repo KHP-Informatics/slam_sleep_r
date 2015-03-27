@@ -35,7 +35,7 @@ getStartEndRows <- function(d, column.name)
 #------------------------------------------------------------------------
 # Load the data tables from getPRTables.R and preprocessPRTables.R
 #------------------------------------------------------------------------
-setwd("/home/afolarinbrc/pr_test_data")
+setwd("/scratch/Datasets/purple_robot_data/pr_test_data")
 
 for(i in dir(pattern="*.RData"))
 { load(i)}
