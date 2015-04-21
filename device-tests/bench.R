@@ -3,7 +3,8 @@
 
 
 #load GenActive Data
-#-------------------
+#===================
+
 ga<- read.csv("~/Dropbox/purple_robot/test_genwatch-v-fitbitHR/genwatch/2015-03-20_16-09.csv", 
         col.names=c("datetime","u1","u2","u3","u4","u5","accel.x","accel.y","accel.z","light","button.pressed","temp"),
         skip=100, stringsAsFactors=F)
@@ -36,7 +37,8 @@ plot(ga.temp, xaxt="n")
 
 
 #load the FitbitHR data
-#---------------------
+#======================
+
 fb <- read.table("~/Dropbox/purple_robot/test_genwatch-v-fitbitHR/export_2015-03-17_2015-03-20_uxu7zx8gg3iq4oob.txt", sep="\t", header=T, stringsAsFactors=F, quote='')
 
 require(jsonlite)
@@ -81,15 +83,44 @@ fb.xt[nrow(fb.xt), "timestamp.datetime"]
 #> ga.datetime[10008]
 #[1] "2015-03-18 17:44:31:500"
 
-from <- 10008
+ga.from <- 10008
+ga.to <- length(ga.datetime)-4
+fb.from <- 1
+fb.to <- nrow(fb.xt)
+
+x11(width=19, height=10)
 par(mfrow=c(4,1))
-plot(ga.accel.z[from:length(ga.accel.z)], xaxt="n")
-to <- ncol(fb.xt)
-plot(unlist(fb.xt[from:to, "LIGHTLY_ACTIVE_MINUTES"]), xaxt="n")
-plot(unlist(fb.xt[from:to, "FAIRLY_ACTIVE_MINUTES"]), xaxt="n")
-plot(unlist(fb.xt[from:to, "VERY_ACTIVE_MINUTES"]), xaxt="n")
-plot(unlist(fb.xt[from:to, "SLEEP_MEASUREMENTS"]), xaxt="n")
-plot(unlist(fb.xt[from:to, "SEDENTARY_RATIO"]), xaxt="n")
+plot(ga.accel.z[ga.from:ga.to], xaxt="n", main="Geneactive (AF)")
+plot(unlist(fb.xt[fb.from:fb.to, "LIGHTLY_ACTIVE_MINUTES"]), xaxt="n", main="Fitbit Lightly Active Mins (AF)")
+plot(unlist(fb.xt[from:to, "FAIRLY_ACTIVE_MINUTES"]), xaxt="n", main="Fitbit Fairly Active Mins (AF)")
+plot(unlist(fb.xt[from:to, "VERY_ACTIVE_MINUTES"]), xaxt="n", main="Fitbit Very Active Mins (AF)", xlab="Time/mins")
+savePlot(filename="dev-tests-ga+fb-AF.jpg")
+
+x11(width=19, height=10)
+par(mfrow=c(4,1))
+plot(ga.accel.z[ga.from:ga.to], xaxt="n", main="Geneactive (AF)")
+plot(unlist(fb.xt[fb.from:fb.to, "LIGHTLY_ACTIVE_MINUTES"]), xaxt="n", main="Fitbit Lightly Active Mins (AF)")
+plot(unlist(fb.xt[from:to, "SEDENTARY_RATIO"]), xaxt="n", main="Fitbit Sedentary Ratio (AF)")
+plot(unlist(fb.xt[from:to, "SLEEP_MEASUREMENTS"]), xaxt="n", main="Fitbit Sleep Auto Marking (AF)", xlab="Time/mins")
+savePlot(filename="dev-tests-ga+fb+sleep-calls-AF.jpg")
+
+
+##try plotting as timeseries
+#plot(as.POSIXlt(ga$datetime[ga.from:ga.to]), ga.accel.z[ga.from:ga.to], xaxt="n", main="Geneactive (AF)", )
+#plot(as.POSIXlt(unlist(fb.xt[fb.from:fb.to, "timestamp.datetime"])), unlist(fb.xt[fb.from:fb.to, "LIGHTLY_ACTIVE_MINUTES"]), xaxt="n", main="Fitbit Lightly Active Mins (AF)")
+require("xts")
+ga.ts <- xts(ga$accel.z[ga.from:ga.to], order.by=as.POSIXct(ga$datetime[ga.from:ga.to]))
+fb.ts <- xts(unlist(fb.xt[fb.from:fb.to, "LIGHTLY_ACTIVE_MINUTES"]), order.by=as.POSIXct(unlist(fb.xt[fb.from:fb.to, "timestamp.datetime"])))
+fb.ts.diff <- xts(diff(unlist(fb.xt[fb.from:fb.to, "LIGHTLY_ACTIVE_MINUTES"])), order.by=as.POSIXct(unlist(fb.xt[fb.from:(fb.to-1), "timestamp.datetime"])))  #strictly speaking you should take the average time between each diff rather than the value of the first of the two timepoints... 
+x11(width=19, height=10)
+par(mfrow=c(3,1))
+plot.xts(ga.ts)
+plot.xts(fb.ts)
+plot.xts(fb.ts.diff)
+savePlot(filename="dev-tests-ga+fb-as-timeseries-AF.jpg")
+
+
+
 
 #plot the diff 
 par(mfrow=c(5,1))
